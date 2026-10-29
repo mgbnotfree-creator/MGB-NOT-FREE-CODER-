@@ -527,3 +527,16 @@ async def admin_reply_ticket(client, callback_query):
     except:
         await reply_msg.reply_text("⏳ Failed. User blocked the bot.")
         
+# ================= 10. MAIN START =================
+async def main():
+    await app.start()
+    print("💻 Ultimate VIP SMM Bot Started Successfully!")
+    
+    # Start Background Alert Task
+    asyncio.create_task(order_status_checker())
+    
+    await idle()
+    await app.stop()
+
+if __name__ == "__main__":
+    app.run(main())
