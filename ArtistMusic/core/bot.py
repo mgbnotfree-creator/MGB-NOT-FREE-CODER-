@@ -13,7 +13,6 @@
 # of this source code without permission is prohibited.
 # ==========================================================
 import pyrogram
-import richgram  # <--- RICHGRAM ADDED HERE
 from typing import Optional
 
 from ArtistMusic import config, logger
