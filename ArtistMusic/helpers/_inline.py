@@ -2,17 +2,191 @@
 # Copyright (c) 2026 ArtistBots
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
 # Type         : API Based Telegram Music Bot
 #
-# Bot          : @ArtistApibot 
-# Channel      : https://t.me/artistbots
-# GitHub       : https://github.com/elevenyts/ArtistXMusic
-#
-# Unauthorized copying, modification, or redistribution
-# of this source code without permission is prohibited.
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 # ==========================================================
-import base64
-_CODE = b"""ZnJvbSBweXJvZ3JhbSBpbXBvcnQgdHlwZXMKZnJvbSBweXJvZ3JhbS5lbnVtcyBpbXBvcnQgQnV0dG9uU3R5bGUKCmZyb20gQXJ0aXN0TXVzaWMgaW1wb3J0IGFwcCwgY29uZmlnLCBsYW5nCgojIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KIyBIRUxQIE1FTlU6IDIxIGJ1dHRvbnMgKG1lcmdlZCBncm91cHMpCiMgKGNhbGxiYWNrIGtleSwgYnV0dG9uIGxhYmVsLCBbb2xkIGhlbHBfKiBrZXlzIHdob3NlIHRleHQgaXMgbWVyZ2VkXSkKIyAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCkhFTFBfR1JPVVBTID0gWwogICAgKCJwbGF5IiwgICAgICAgICLhtJjKn+G0gMqPIiwgICAgICAgICAgIFsicGxheSJdKSwKICAgICgicGxheWJhY2siLCAgICAi4bSE4bSPybThtJvKgOG0j8qfIiwgICAgICAgIFsicGF1c2UiLCAicmVzdW1lIiwgInNraXAiLCAic3RvcCJdKSwKICAgICgic2VlayIsICAgICAgICAi6pyx4bSH4bSH4bSLL8qf4bSP4bSP4bSYIiwgICAgICBbInNlZWsiLCAibG9vcCIsICJzaHVmZmxlIl0pLAogICAgKCJxdWV1ZSIsICAgICAgICLHq+G0nOG0h+G0nOG0hyIsICAgICAgICAgIFsicXVldWUiLCAiYXV0b3BsYXkiXSksCiAgICAoInBsYXltb2RlIiwgICAgIuG0mMqf4bSAyo/htI3htI/htIXhtIciLCAgICAgICBbInBsYXltb2RlIiwgImxpbmsiLCAiYXV0b2xlYXZlIl0pLAogICAgKCJiYW4iLCAgICAgICAgICLKmeG0gMm0L8miLcqZ4bSAybQiLCAgICAgIFsiYmFuIiwgImdiYW4iXSksICAgICAgICAgICAgICAjIGJhbiB0ZXh0IGFscmVhZHkgaGFzIGtpY2sKICAgICgibXV0ZSIsICAgICAgICAi4bSN4bSc4bSb4bSHL+G0jeG0gOqcseqcsSIsICAgICAgWyJtdXRlIiwgIm1hc3MiXSksCiAgICAoInByb21vdGUiLCAgICAgIuG0gOG0heG0jcmqybQv4bSA4bSc4bSbypwiLCAgICAgWyJwcm9tb3RlIiwgImF1dGgiXSksICAgICAgICAgICMgcHJvbW90ZSB0ZXh0IGFscmVhZHkgaGFzIGFkbWlucwogICAgKCJncm91cCIsICAgICAgICLJosqA4bSP4bSc4bSYIiwgICAgICAgICAgWyJncm91cCIsICJ3ZWxjb21lIl0pLCAgICAgICAgICMgZ3JvdXAgdGV4dCBhbHJlYWR5IGhhcyBwaW4KICAgICgiY2xlYW4iLCAgICAgICAi4bSEyp/htIfhtIDJtCIsICAgICAgICAgIFsicHVyZ2UiLCAiem9tYmllcyJdKSwKICAgICgidGFnIiwgICAgICAgICAi4bSb4bSAyaIiLCAgICAgICAgICAgIFsidGFnIl0pLAogICAgKCJzdGlja2VyIiwgICAgICLqnLHhtJvJquG0hOG0i+G0h8qAIiwgICAgICAgIFsic3RpY2tlciJdKSwKICAgICgiaW5mbyIsICAgICAgICAiyarJtOqcsOG0jy/KmeG0j+G0m+qcsSIsICAgICAgWyJpbmZvIiwgImJvdHMiXSksCiAgICAoInN1ZG8iLCAgICAgICAgIuqcseG0nOG0heG0jyIsICAgICAgICAgICBbInN1ZG8iXSksCiAgICAoImJyb2FkY2FzdCIsICAgIsqZyoDhtI/htIDhtIXhtIThtIDqnLHhtJsiLCAgICAgIFsiYnJvYWRjYXN0Il0pLAogICAgKCJibGFja2xpc3QiLCAgICLKmcqf4bSA4bSE4bSLyp/JquqcseG0myIsICAgICAgWyJibGNoYXQiLCAiYmx1c2VyIl0pLAogICAgKCJtYWludGVuYW5jZSIsICLhtI3htIDJqsm04bSb4bSHybThtIDJtOG0hOG0hyIsICAgIFsibWFpbnRlbmFuY2UiXSksCiAgICAoImFjdGl2ZSIsICAgICAgIuG0hOG0gMqfyp/qnLEvyp/htI/JouqcsSIsICAgICBbImFjdGl2ZSIsICJsb2dzIl0pLAogICAgKCJyZXN0YXJ0IiwgICAgICLKgOG0h+qcseG0m+G0gMqA4bSbL8qf4bSH4bSA4bSg4bSHIiwgIFsicmVzdGFydCIsICJsZWF2ZSJdKSwKICAgICgiZXZhbCIsICAgICAgICAi4bSH4bSg4bSAyp8iLCAgICAgICAgICAgWyJldmFsIl0pLAogICAgKCJwaW5nIiwgICAgICAgICLhtJjJqsm0yaIv6pyx4bSb4bSA4bSb6pyxIiwgICAgIFsicGluZyIsICJzdGF0cyJdKSwKXQoKCmNsYXNzIElubGluZToKICAgIGRlZiBfX2luaXRfXyhzZWxmKToKICAgICAgICBzZWxmLmlrbSA9IHR5cGVzLklubGluZUtleWJvYXJkTWFya3VwCiAgICAgICAgc2VsZi5pa2IgPSB0eXBlcy5JbmxpbmVLZXlib2FyZEJ1dHRvbgoKICAgIGRlZiBjYW5jZWxfZGwoc2VsZiwgdGV4dCkgLT4gdHlwZXMuSW5saW5lS2V5Ym9hcmRNYXJrdXA6CiAgICAgICAgcmV0dXJuIHNlbGYuaWttKFtbCiAgICAgICAgICAgIHNlbGYuaWtiKAogICAgICAgICAgICAgICAgdGV4dD1mIuKclyAge3RleHR9IiwKICAgICAgICAgICAgICAgIGNhbGxiYWNrX2RhdGE9ImNhbmNlbF9kbCIsCiAgICAgICAgICAgICAgICBzdHlsZT1CdXR0b25TdHlsZS5EQU5HRVIsCiAgICAgICAgICAgICkKICAgICAgICBdXSkKCiAgICBkZWYgY29udHJvbHMoCiAgICAgICAgc2VsZiwKICAgICAgICBjaGF0X2lkOiBpbnQsCiAgICAgICAgc3RhdHVzOiBzdHIgPSBOb25lLAogICAgICAgIHRpbWVyOiBzdHIgPSBOb25lLAogICAgICAgIHJlbW92ZTogYm9vbCA9IEZhbHNlLAogICAgKSAtPiB0eXBlcy5JbmxpbmVLZXlib2FyZE1hcmt1cDoKICAgICAgICBrZXlib2FyZCA9IFtdCgogICAgICAgIGlmIHN0YXR1czoKICAgICAgICAgICAga2V5Ym9hcmQuYXBwZW5kKAogICAgICAgICAgICAgICAgW3NlbGYuaWtiKAogICAgICAgICAgICAgICAgICAgIHRleHQ9ZiJ7c3RhdHVzfSIsCiAgICAgICAgICAgICAgICAgICAgY2FsbGJhY2tfZGF0YT1mImNvbnRyb2xzIHN0YXR1cyB7Y2hhdF9pZH0iLAogICAgICAgICAgICAgICAgICAgIHN0eWxlPUJ1dHRvblN0eWxlLlBSSU1BUlksCiAgICAgICAgICAgICAgICApXQogICAgICAgICAgICApCiAgICAgICAgZWxpZiB0aW1lcjoKICAgICAgICAgICAga2V5Ym9hcmQuYXBwZW5kKAogICAgICAgICAgICAgICAgW3NlbGYuaWtiKAogICAgICAgICAgICAgICAgICAgIHRleHQ9ZiJ7dGltZXJ9IiwKICAgICAgICAgICAgICAgICAgICBjYWxsYmFja19kYXRhPWYiY29udHJvbHMgc3RhdHVzIHtjaGF0X2lkfSIsCiAgICAgICAgICAgICAgICAgICAgc3R5bGU9QnV0dG9uU3R5bGUuUFJJTUFSWSwKICAgICAgICAgICAgICAgICldCiAgICAgICAgICAgICkKCiAgICAgICAgaWYgbm90IHJlbW92ZToKICAgICAgICAgICAga2V5Ym9hcmQuYXBwZW5kKAogICAgICAgICAgICAgICAgWwogICAgICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9IklJIiwgIGNhbGxiYWNrX2RhdGE9ZiJjb250cm9scyBwYXVzZSB7Y2hhdF9pZH0iLCAgc3R5bGU9QnV0dG9uU3R5bGUuUFJJTUFSWSksCiAgICAgICAgICAgICAgICAgICAgc2VsZi5pa2IodGV4dD0i4pa3IiwgICBjYWxsYmFja19kYXRhPWYiY29udHJvbHMgcmVzdW1lIHtjaGF0X2lkfSIsIHN0eWxlPUJ1dHRvblN0eWxlLlBSSU1BUlkpLAogICAgICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9IuKGuyIsICAgY2FsbGJhY2tfZGF0YT1mImNvbnRyb2xzIHJlcGxheSB7Y2hhdF9pZH0iLCBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZKSwKICAgICAgICAgICAgICAgICAgICBzZWxmLmlrYih0ZXh0PSLigKPigKNJIiwgY2FsbGJhY2tfZGF0YT1mImNvbnRyb2xzIHNraXAge2NoYXRfaWR9IiwgICBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZKSwKICAgICAgICAgICAgICAgICAgICBzZWxmLmlrYih0ZXh0PSLilqIiLCAgIGNhbGxiYWNrX2RhdGE9ZiJjb250cm9scyBzdG9wIHtjaGF0X2lkfSIsICAgc3R5bGU9QnV0dG9uU3R5bGUuUFJJTUFSWSksCiAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICkKICAgICAgICAgICAgZnJvbSBBcnRpc3RNdXNpYyBpbXBvcnQgZGIKICAgICAgICAgICAgYXBfb24gPSBjaGF0X2lkIGluIGRiLmF1dG9wbGF5X29uCiAgICAgICAgICAgIGtleWJvYXJkLmFwcGVuZCgKICAgICAgICAgICAgICAgIFsKICAgICAgICAgICAgICAgICAgICBzZWxmLmlrYigKICAgICAgICAgICAgICAgICAgICAgICAgdGV4dD0i4bSA4bSc4bSb4bSP4bSYyp/htIDKjyA6IOG0j8m0IiBpZiBhcF9vbiBlbHNlICLhtIDhtJzhtJvhtI/htJjKn+G0gMqPIDog4bSP0pPSkyIsCiAgICAgICAgICAgICAgICAgICAgICAgIGNhbGxiYWNrX2RhdGE9ZiJjb250cm9scyBhdXRvcGxheSB7Y2hhdF9pZH0iLAogICAgICAgICAgICAgICAgICAgICAgICBzdHlsZT1CdXR0b25TdHlsZS5TVUNDRVNTLAogICAgICAgICAgICAgICAgICAgICksCiAgICAgICAgICAgICAgICAgICAgc2VsZi5pa2IoCiAgICAgICAgICAgICAgICAgICAgICAgIHRleHQ9IuKAoiDhtITKn+G0j3PhtIcg4oCiIiwKICAgICAgICAgICAgICAgICAgICAgICAgY2FsbGJhY2tfZGF0YT1mImNvbnRyb2xzIGNsb3NlIHtjaGF0X2lkfSIsCiAgICAgICAgICAgICAgICAgICAgICAgIHN0eWxlPUJ1dHRvblN0eWxlLkRBTkdFUiwKICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgXQogICAgICAgICAgICApCgogICAgICAgIHJldHVybiBzZWxmLmlrbShrZXlib2FyZCkKCiAgICBkZWYgaGVscF9tYXJrdXAoCiAgICAgICAgc2VsZiwgX2xhbmc6IGRpY3QsIGJhY2s6IGJvb2wgPSBGYWxzZQogICAgKSAtPiB0eXBlcy5JbmxpbmVLZXlib2FyZE1hcmt1cDoKICAgICAgICBpZiBiYWNrOgogICAgICAgICAgICByb3dzID0gWwogICAgICAgICAgICAgICAgW3NlbGYuaWtiKAogICAgICAgICAgICAgICAgICAgIHRleHQ9IuKAoiDKmeG0gOG0hOG0iyDigKIiLAogICAgICAgICAgICAgICAgICAgIGNhbGxiYWNrX2RhdGE9ImhlbHBfbWFpbiIsCiAgICAgICAgICAgICAgICAgICAgc3R5bGU9QnV0dG9uU3R5bGUuU1VDQ0VTUywKICAgICAgICAgICAgICAgICldCiAgICAgICAgICAgIF0KICAgICAgICBlbHNlOgogICAgICAgICAgICBfYnRucyA9IFsKICAgICAgICAgICAgICAgIHNlbGYuaWtiKAogICAgICAgICAgICAgICAgICAgIHRleHQ9X2xhYmVsLAogICAgICAgICAgICAgICAgICAgIGNhbGxiYWNrX2RhdGE9ZiJoZWxwX3tfa2V5fSIsCiAgICAgICAgICAgICAgICAgICAgc3R5bGU9QnV0dG9uU3R5bGUuUFJJTUFSWSwKICAgICAgICAgICAgICAgICkKICAgICAgICAgICAgICAgIGZvciBfa2V5LCBfbGFiZWwsIF8gaW4gSEVMUF9HUk9VUFMKICAgICAgICAgICAgXQogICAgICAgICAgICByb3dzID0gW19idG5zW246biArIDNdIGZvciBuIGluIHJhbmdlKDAsIGxlbihfYnRucyksIDMpXQogICAgICAgICAgICByb3dzLmFwcGVuZChbCiAgICAgICAgICAgICAgICBzZWxmLmlrYigKICAgICAgICAgICAgICAgICAgICB0ZXh0PSLigKIgypnhtIDhtIThtIsg4oCiIiwKICAgICAgICAgICAgICAgICAgICBjYWxsYmFja19kYXRhPSJzdGFydCIsCiAgICAgICAgICAgICAgICAgICAgc3R5bGU9QnV0dG9uU3R5bGUuU1VDQ0VTUywKICAgICAgICAgICAgICAgICkKICAgICAgICAgICAgXSkKICAgICAgICByZXR1cm4gc2VsZi5pa20ocm93cykKCiAgICBkZWYgaGVscF90ZXh0KHNlbGYsIF9sYW5nOiBkaWN0LCBjYXRlZ29yeTogc3RyKToKICAgICAgICAiIiJNZXJnZWQgaGVscCB0ZXh0IGZvciBhIGdyb3VwIGtleSAoTm9uZSBpZiBjYXRlZ29yeSBpcyBub3QgYSBncm91cCkuIiIiCiAgICAgICAgZm9yIF9rZXksIF9sYWJlbCwgX3NyY3MgaW4gSEVMUF9HUk9VUFM6CiAgICAgICAgICAgIGlmIF9rZXkgPT0gY2F0ZWdvcnk6CiAgICAgICAgICAgICAgICBwYXJ0cyA9IFtfbGFuZy5nZXQoZiJoZWxwX3trfSIpIGZvciBrIGluIF9zcmNzXQogICAgICAgICAgICAgICAgcGFydHMgPSBbcCBmb3IgcCBpbiBwYXJ0cyBpZiBwXQogICAgICAgICAgICAgICAgcmV0dXJuICJcblxuIi5qb2luKHBhcnRzKSBpZiBwYXJ0cyBlbHNlIE5vbmUKICAgICAgICByZXR1cm4gTm9uZQoKICAgIGRlZiBsYW5nc19tYXJrdXAoc2VsZikgLT4gdHlwZXMuSW5saW5lS2V5Ym9hcmRNYXJrdXA6CiAgICAgICAgbGFuZ3MgPSBbCiAgICAgICAgICAgICgi8J+HrPCfh6cgRW5nbGlzaCIsICAgICJlbiIpLCAoIvCfh67wn4ezIEhpbmRpIiwgICAgICAiaGkiKSwKICAgICAgICAgICAgKCLwn4eu8J+HsyBUZWx1Z3UiLCAgICAgInRlIiksICgi8J+HsPCfh7cgS29yZWFuIiwgICAgICJrbyIpLAogICAgICAgICAgICAoIvCfh7Lwn4eyIE15YW5tYXIiLCAgICAibXkiKSwgKCLwn4eu8J+HqSBJbmRvbmVzaWFuIiwgImlkIiksCiAgICAgICAgICAgICgi8J+Hp/Cfh7cgUG9ydHVndWVzZSIsICJwdCIpLCAoIvCfh7jwn4emIEFyYWJpYyIsICAgICAiYXIiKSwKICAgICAgICAgICAgKCLwn4eq8J+HuCBTcGFuaXNoIiwgICAgImVzIiksICgi8J+Hq/Cfh7cgRnJlbmNoIiwgICAgICJmciIpLAogICAgICAgICAgICAoIvCfh7fwn4e6IFJ1c3NpYW4iLCAgICAicnUiKSwgKCLwn4ep8J+HqiBHZXJtYW4iLCAgICAgImRlIiksCiAgICAgICAgICAgICgi8J+HufCfh7cgVHVya2lzaCIsICAgICJ0ciIpLCAoIvCfh6fwn4epIEJlbmdhbGkiLCAgICAiYm4iKSwKICAgICAgICAgICAgKCLwn4e58J+HrSBUaGFpIiwgICAgICAgInRoIiksICgi8J+Hu/Cfh7MgVmlldG5hbWVzZSIsICJ2aSIpLAogICAgICAgICAgICAoIvCfh6/wn4e1IEphcGFuZXNlIiwgICAiamEiKSwgKCLwn4eo8J+HsyBDaGluZXNlIiwgICAgInpoIiksCiAgICAgICAgICAgICgi8J+HtfCfh7AgVXJkdSIsICAgICAgICJ1ciIpLCAoIvCfh67wn4e3IFBlcnNpYW4iLCAgICAiZmEiKSwKICAgICAgICAgICAgKCLwn4eu8J+HsyBCaG9qcHVyaSIsICAgImJobyIpLCAoIvCfh7Pwn4e1IE5lcGFsaSIsICAgICAibmUiKSwKICAgICAgICBdCiAgICAgICAgcm93cyA9IFtdCiAgICAgICAgZm9yIGkgaW4gcmFuZ2UoMCwgbGVuKGxhbmdzKSwgMik6CiAgICAgICAgICAgIHJvdyA9IFtzZWxmLmlrYih0ZXh0PWxhbmdzW2ldWzBdLCBjYWxsYmFja19kYXRhPWYic2V0bGFuZ197bGFuZ3NbaV1bMV19Iiwgc3R5bGU9QnV0dG9uU3R5bGUuUFJJTUFSWSldCiAgICAgICAgICAgIGlmIGkgKyAxIDwgbGVuKGxhbmdzKToKICAgICAgICAgICAgICAgIHJvdy5hcHBlbmQoc2VsZi5pa2IodGV4dD1sYW5nc1tpICsgMV1bMF0sIGNhbGxiYWNrX2RhdGE9ZiJzZXRsYW5nX3tsYW5nc1tpICsgMV1bMV19Iiwgc3R5bGU9QnV0dG9uU3R5bGUuUFJJTUFSWSkpCiAgICAgICAgICAgIHJvd3MuYXBwZW5kKHJvdykKICAgICAgICByb3dzLmFwcGVuZChbc2VsZi5pa2IoCiAgICAgICAgICAgIHRleHQ9IuKAoiDKmeG0gOG0hOG0iyDigKIiLAogICAgICAgICAgICBjYWxsYmFja19kYXRhPSJzdGFydCIsCiAgICAgICAgICAgIHN0eWxlPUJ1dHRvblN0eWxlLlNVQ0NFU1MsCiAgICAgICAgKV0pCiAgICAgICAgcmV0dXJuIHNlbGYuaWttKHJvd3MpCgogICAgIyBGSVggIzE6IHRoZSAndGV4dCcgcGFyYW0gaXMgbm93IGFjdHVhbGx5IHVzZWQgKGluIHRoZSBzdGF0dXMgcm93KQogICAgZGVmIHBpbmdfbWFya3VwKHNlbGYsIHRleHQ6IHN0cikgLT4gdHlwZXMuSW5saW5lS2V5Ym9hcmRNYXJrdXA6CiAgICAgICAgcmV0dXJuIHNlbGYuaWttKFsKICAgICAgICAgICAgWwogICAgICAgICAgICAgICAgc2VsZi5pa2IoCiAgICAgICAgICAgICAgICAgICAgdGV4dD1mInt0ZXh0fSIsCiAgICAgICAgICAgICAgICAgICAgY2FsbGJhY2tfZGF0YT0icGluZ19yZWZyZXNoIiwKICAgICAgICAgICAgICAgICAgICBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZLAogICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgXSwKICAgICAgICAgICAgWwogICAgICAgICAgICAgICAgc2VsZi5pa2IodGV4dD0iICDhtITKnOG0gMm0ybThtIfKnyIsIHVybD1jb25maWcuU1VQUE9SVF9DSEFOTkVMLCBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZKSwKICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9IiAg6pyx4bSc4bSY4bSY4bSPyoDhtJsiLCAgdXJsPWNvbmZpZy5TVVBQT1JUX0NIQVQsICAgIHN0eWxlPUJ1dHRvblN0eWxlLlBSSU1BUlkpLAogICAgICAgICAgICBdLAogICAgICAgICAgICBbCiAgICAgICAgICAgICAgICBzZWxmLmlrYigKICAgICAgICAgICAgICAgICAgICB0ZXh0PSLhtIDhtIXhtIUg4bSN4bSHIOG0m+G0jyDKj+G0j+G0nMqAIMmiyoDhtI/htJzhtJgiLAogICAgICAgICAgICAgICAgICAgIHVybD1mImh0dHBzOi8vdC5tZS97YXBwLnVzZXJuYW1lfT9zdGFydGdyb3VwPXRydWUiLAogICAgICAgICAgICAgICAgICAgIHN0eWxlPUJ1dHRvblN0eWxlLlNVQ0NFU1MsCiAgICAgICAgICAgICAgICApLAogICAgICAgICAgICBdLAogICAgICAgIF0pCgogICAgIyBGSVggIzI6ICdpdGVtX2lkJyBpcyBub3cgcGFzc2VkIGluIGNhbGxiYWNrX2RhdGEgc28gdGhhdCB0aGUKICAgICMgY29ycmVjdCBpdGVtIGlzIGNvbnRyb2xsZWQgaW4gYSBtdWx0aS10cmFjayBxdWV1ZSAodGhlIHdyb25nIGl0ZW0gaXMgbm90IHByZXNzZWQpCiAgICBkZWYgcGxheV9xdWV1ZWQoCiAgICAgICAgc2VsZiwgY2hhdF9pZDogaW50LCBpdGVtX2lkOiBzdHIsIF90ZXh0OiBzdHIKICAgICkgLT4gdHlwZXMuSW5saW5lS2V5Ym9hcmRNYXJrdXA6CiAgICAgICAgcmV0dXJuIHNlbGYuaWttKFsKICAgICAgICAgICAgWwogICAgICAgICAgICAgICAgc2VsZi5pa2IodGV4dD0i4pa3IiwgICBjYWxsYmFja19kYXRhPWYiY29udHJvbHMgcmVzdW1lIHtjaGF0X2lkfSB7aXRlbV9pZH0iLCBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZKSwKICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9IklJIiwgIGNhbGxiYWNrX2RhdGE9ZiJjb250cm9scyBwYXVzZSB7Y2hhdF9pZH0ge2l0ZW1faWR9IiwgIHN0eWxlPUJ1dHRvblN0eWxlLlBSSU1BUlkpLAogICAgICAgICAgICAgICAgc2VsZi5pa2IodGV4dD0i4oa7IiwgICBjYWxsYmFja19kYXRhPWYiY29udHJvbHMgcmVwbGF5IHtjaGF0X2lkfSB7aXRlbV9pZH0iLCBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZKSwKICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9IuKAo+KAo0kiLCBjYWxsYmFja19kYXRhPWYiY29udHJvbHMgc2tpcCB7Y2hhdF9pZH0ge2l0ZW1faWR9IiwgICBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZKSwKICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9IuKWoiIsICAgY2FsbGJhY2tfZGF0YT1mImNvbnRyb2xzIHN0b3Age2NoYXRfaWR9IHtpdGVtX2lkfSIsICAgc3R5bGU9QnV0dG9uU3R5bGUuUFJJTUFSWSksCiAgICAgICAgICAgIF0sCiAgICAgICAgXSkKCiAgICBkZWYgcXVldWVfbWFya3VwKAogICAgICAgIHNlbGYsIGNoYXRfaWQ6IGludCwgX3RleHQ6IHN0ciwgcGxheWluZzogYm9vbAogICAgKSAtPiB0eXBlcy5JbmxpbmVLZXlib2FyZE1hcmt1cDoKICAgICAgICBfYWN0aW9uID0gInBhdXNlIiBpZiBwbGF5aW5nIGVsc2UgInJlc3VtZSIKICAgICAgICByZXR1cm4gc2VsZi5pa20oCiAgICAgICAgICAgIFtbc2VsZi5pa2IoCiAgICAgICAgICAgICAgICB0ZXh0PV90ZXh0LAogICAgICAgICAgICAgICAgY2FsbGJhY2tfZGF0YT1mImNvbnRyb2xzIHtfYWN0aW9ufSB7Y2hhdF9pZH0gcSIsCiAgICAgICAgICAgICAgICBzdHlsZT1CdXR0b25TdHlsZS5TVUNDRVNTLAogICAgICAgICAgICApXV0KICAgICAgICApCgogICAgIyBGSVggIzM6ICdsYW5ndWFnZScgaXMgbm93IGRpc3BsYXllZCBpbiBpdHMgb3duIHJvdwogICAgZGVmIHNldHRpbmdzX21hcmt1cCgKICAgICAgICBzZWxmLCBsYW5nOiBkaWN0LCBhZG1pbl9vbmx5OiBib29sLCBmb3JjZV9hZG1pbjogYm9vbCwgbGFuZ3VhZ2U6IHN0ciwgY2hhdF9pZDogaW50CiAgICApIC0+IHR5cGVzLklubGluZUtleWJvYXJkTWFya3VwOgogICAgICAgIHBsYXlfbW9kZV90eHQgID0gbGFuZ1siYWRtaW5fb25seV90eHQiXSBpZiBhZG1pbl9vbmx5ICBlbHNlIGxhbmdbImV2ZXJ5b25lIl0KICAgICAgICBmb3JjZV9tb2RlX3R4dCA9IGxhbmdbImFkbWluX29ubHlfdHh0Il0gaWYgZm9yY2VfYWRtaW4gZWxzZSBsYW5nWyJldmVyeW9uZSJdCiAgICAgICAgcmV0dXJuIHNlbGYuaWttKFsKICAgICAgICAgICAgWwogICAgICAgICAgICAgICAgc2VsZi5pa2IodGV4dD0iICAiICsgbGFuZ1sicGxheV9tb2RlIl0sICBjYWxsYmFja19kYXRhPWYiY29udHJvbHMgc3RhdHVzIHtjaGF0X2lkfSIsIHN0eWxlPUJ1dHRvblN0eWxlLlBSSU1BUlkpLAogICAgICAgICAgICAgICAgc2VsZi5pa2IodGV4dD1wbGF5X21vZGVfdHh0LCAgICAgICAgICAgICAgIGNhbGxiYWNrX2RhdGE9InBsYXltb2RlIiwgICAgICAgICAgICAgICAgICAgc3R5bGU9QnV0dG9uU3R5bGUuU1VDQ0VTUyksCiAgICAgICAgICAgIF0sCiAgICAgICAgICAgIFsKICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9IiAgIiArIGxhbmdbImZvcmNlX21vZGUiXSwgY2FsbGJhY2tfZGF0YT1mImNvbnRyb2xzIHN0YXR1cyB7Y2hhdF9pZH0iLCBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZKSwKICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9Zm9yY2VfbW9kZV90eHQsICAgICAgICAgICAgICBjYWxsYmFja19kYXRhPSJmb3JjZW1vZGUiLCAgICAgICAgICAgICAgICAgIHN0eWxlPUJ1dHRvblN0eWxlLlNVQ0NFU1MpLAogICAgICAgICAgICBdLAogICAgICAgICAgICBbCiAgICAgICAgICAgICAgICBzZWxmLmlrYih0ZXh0PSIiICsgbGFuZ3VhZ2UudXBwZXIoKSwgIGNhbGxiYWNrX2RhdGE9ImhlbHBfbGFuZ3MiLCBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZKSwKICAgICAgICAgICAgXSwKICAgICAgICBdKQoKICAgIGRlZiBzdGFydF9rZXkoCiAgICAgICAgc2VsZiwgbGFuZzogZGljdCwgcHJpdmF0ZTogYm9vbCA9IEZhbHNlCiAgICApIC0+IHR5cGVzLklubGluZUtleWJvYXJkTWFya3VwOgogICAgICAgIHJvd3MgPSBbCiAgICAgICAgICAgIFsKICAgICAgICAgICAgICAgIHNlbGYuaWtiKAogICAgICAgICAgICAgICAgICAgIHRleHQ9IiIgKyBsYW5nWyJhZGRfbWUiXSwKICAgICAgICAgICAgICAgICAgICB1cmw9ZiJodHRwczovL3QubWUve2FwcC51c2VybmFtZX0/c3RhcnRncm91cD10cnVlIiwKICAgICAgICAgICAgICAgICAgICBzdHlsZT1CdXR0b25TdHlsZS5QUklNQVJZLAogICAgICAgICAgICAgICAgKQogICAgICAgICAgICBdLAogICAgICAgICAgICBbCiAgICAgICAgICAgICAgICBzZWxmLmlrYih0ZXh0PSIgICIgKyBsYW5nWyJoZWxwIl0sICBjYWxsYmFja19kYXRhPSJoZWxwIiksCiAgICAgICAgICAgIF0sCiAgICAgICAgICAgIFsKICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9IiAgIiArIGxhbmdbInN1cHBvcnQiXSwgdXJsPWNvbmZpZy5TVVBQT1JUX0NIQVQpLAogICAgICAgICAgICAgICAgc2VsZi5pa2IodGV4dD0iICIgKyBsYW5nWyJjaGFubmVsIl0sIHVybD1jb25maWcuU1VQUE9SVF9DSEFOTkVMKSwKICAgICAgICAgICAgXSwKICAgICAgICAgICAgWwogICAgICAgICAgICAgICAgc2VsZi5pa2IodGV4dD0iyp/htIDJtMmi4bSc4bSAyaLhtIciLCAgY2FsbGJhY2tfZGF0YT0iaGVscF9sYW5ncyIpLAogICAgICAgICAgICAgICAgc2VsZi5pa2IodGV4dD0i4bSF4bSH4bSg4bSHyp/htI/htJjhtIfKgCIsIHVybD0iaHR0cHM6Ly9naXRodWIuY29tL2VsZXZlbnl0cy9BcnRpc3RYTXVzaWMiKSwKICAgICAgICAgICAgXSwKICAgICAgICBdCiAgICAgICAgcmV0dXJuIHNlbGYuaWttKHJvd3MpCgogICAgZGVmIHl0X2tleShzZWxmLCBsaW5rOiBzdHIpIC0+IHR5cGVzLklubGluZUtleWJvYXJkTWFya3VwOgogICAgICAgIHJldHVybiBzZWxmLmlrbShbCiAgICAgICAgICAgIFsKICAgICAgICAgICAgICAgIHNlbGYuaWtiKHRleHQ9IuG0hOG0j+G0mMqPIMqfyarJtOG0iyIsICAgICBjb3B5X3RleHQ9bGluaywgc3R5bGU9QnV0dG9uU3R5bGUuUFJJTUFSWSksCiAgICAgICAgICAgICAgICBzZWxmLmlrYih0ZXh0PSLhtI/htJjhtIfJtCDJqsm0IMqP4bSbIiwgdXJsPWxpbmssICAgICAgIHN0eWxlPUJ1dHRvblN0eWxlLkRBTkdFUiksCiAgICAgICAgICAgIF0sCiAgICAgICAgXSkK"""
-exec(compile(base64.b64decode(_CODE), "inline.py", "exec"))
+
+import random
+from typing import Optional
+from ArtistMusic import app, config, lang
+
+def _tg_btn(text: str, callback_data: str, style: Optional[str] = None) -> str:
+    style_attr = f' style="{style}"' if style else ""
+    return f'<tg-button type="callback_data"{style_attr} data="{callback_data}">{text}</tg-button>'
+
+def _url_btn(text: str, url: str, style: Optional[str] = None) -> str:
+    style_attr = f' style="{style}"' if style else ""
+    return f'<tg-button type="url"{style_attr} url="{url}">{text}</tg-button>'
+
+def _row(*buttons: str) -> str:
+    return "<tg-button-row>" + "".join(buttons) + "</tg-button-row>"
+
+def random_style() -> str:
+    return random.choice(["success", "danger", "primary"])
+
+# ---------------------------------------------------------
+# HELP MENU GROUPS
+# ---------------------------------------------------------
+HELP_GROUPS = [
+    ("play",        "▶️ Play",           ["play"]),
+    ("playback",    "⏸️ Playback",        ["pause", "resume", "skip", "stop"]),
+    ("seek",        "⏩ Seek/Loop",      ["seek", "loop", "shuffle"]),
+    ("queue",       "📋 Queue",          ["queue", "autoplay"]),
+    ("playmode",    "⚙️ Playmode",       ["playmode", "link", "autoleave"]),
+    ("ban",         "🚫 Ban",            ["ban", "gban"]), 
+    ("mute",        "🔇 Mute",           ["mute", "mass"]),
+    ("promote",     "⭐ Promote",        ["promote", "auth"]), 
+    ("group",       "👥 Group",          ["group", "welcome"]), 
+    ("clean",       "🧹 Clean",          ["purge", "zombies"]),
+    ("tag",         "🏷️ Tag All",        ["tag"]),
+    ("sticker",     "🎨 Stickers",       ["sticker"]),
+    ("info",        "ℹ️ Info",           ["info", "bots"]),
+    ("sudo",        "👑 Sudo",           ["sudo"]),
+    ("broadcast",   "📢 Broadcast",      ["broadcast"]),
+    ("blacklist",   "⛔ Blacklist",      ["blchat", "bluser"]),
+    ("maintenance", "🛠️ Maintenance",    ["maintenance"]),
+    ("active",      "📊 Active VCs",     ["active", "logs"]),
+    ("restart",     "🔄 Restart",        ["restart", "leave"]),
+    ("eval",        "💻 Eval",           ["eval"]),
+    ("ping",        "🏓 Ping",           ["ping", "stats"]),
+]
+
+class Inline:
+    def __init__(self):
+        pass
+
+    def cancel_dl(self, text) -> str:
+        return _row(_tg_btn(f"❌  {text}", "cancel_dl", "danger"))
+
+    # प्लेयर कंट्रोल्स
+    def controls(self, chat_id: int, status: str = None, timer: str = None, remove: bool = False) -> str:
+        html = ""
+        if status:
+            html += _row(_tg_btn(f"{status}", f"controls status {chat_id}", "primary"))
+        elif timer:
+            html += _row(_tg_btn(f"{timer}", f"controls status {chat_id}", "primary"))
+
+        if not remove:
+            html += _row(
+                _tg_btn("⏸️ ᴘᴀᴜꜱᴇ", f"controls pause {chat_id}", random_style()),
+                _tg_btn("▶️ ʀᴇꜱᴜᴍᴇ", f"controls resume {chat_id}", random_style()),
+                _tg_btn("🔁 ʟᴏᴏᴘ", f"controls replay {chat_id}", random_style()),
+                _tg_btn("⏭️ ꜱᴋɪᴘ", f"controls skip {chat_id}", random_style()),
+                _tg_btn("⏹️ ꜱᴛᴏᴘ", f"controls stop {chat_id}", random_style()),
+            )
+            from ArtistMusic import db
+            ap_on = chat_id in db.autoplay_on
+            html += _row(
+                _tg_btn("🟢 ᴀᴜᴛᴏᴘʟᴀʏ : ᴏɴ" if ap_on else "🔴 ᴀᴜᴛᴏᴘʟᴀʏ : ᴏꜰꜰ", f"controls autoplay {chat_id}", "success"),
+                _tg_btn("🚨 ᴄʟᴏꜱᴇ 🚨", f"controls close {chat_id}", "danger")
+            )
+        return html
+
+    def help_markup(self, _lang: dict, back: bool = False) -> str:
+        if back:
+            return _row(_tg_btn("« ʙᴀᴄᴋ", "help_main", "success"))
+        else:
+            _btns = [_tg_btn(_label, f"help_{_key}", "primary") for _key, _label, _ in HELP_GROUPS]
+            rows = [_row(*_btns[n:n + 3]) for n in range(0, len(_btns), 3)]
+            rows.append(_row(_tg_btn("❌ ᴄʟᴏꜱᴇ", "start", "danger")))
+            return "".join(rows)
+
+    def help_text(self, _lang: dict, category: str):
+        for _key, _label, _srcs in HELP_GROUPS:
+            if _key == category:
+                parts = [_lang.get(f"help_{k}") for k in _srcs]
+                parts = [p for p in parts if p]
+                return "\n\n".join(parts) if parts else None
+        return None
+
+    def langs_markup(self) -> str:
+        langs = [
+            ("🇺🇸 English",    "en"), ("🇮🇳 Hindi",      "hi"),
+            ("🇮🇳 Telugu",     "te"), ("🇰🇷 Korean",     "ko"),
+            ("🇲🇲 Myanmar",    "my"), ("🇮🇩 Indonesian", "id"),
+            ("🇵🇹 Portuguese", "pt"), ("🇸🇦 Arabic",     "ar"),
+            ("🇪🇸 Spanish",    "es"), ("🇫🇷 French",     "fr"),
+            ("🇷🇺 Russian",    "ru"), ("🇩🇪 German",     "de"),
+            ("🇹🇷 Turkish",    "tr"), ("🇧🇩 Bengali",    "bn"),
+            ("🇹🇭 Thai",       "th"), ("🇻🇳 Vietnamese", "vi"),
+            ("🇯🇵 Japanese",   "ja"), ("🇨🇳 Chinese",    "zh"),
+            ("🇵🇰 Urdu",       "ur"), ("🇮🇷 Persian",    "fa"),
+            ("🇮🇳 Bhojpuri",   "bho"), ("🇳🇵 Nepali",     "ne"),
+        ]
+        html = ""
+        for i in range(0, len(langs), 2):
+            if i + 1 < len(langs):
+                html += _row(
+                    _tg_btn(langs[i][0], f"setlang_{langs[i][1]}", "primary"),
+                    _tg_btn(langs[i+1][0], f"setlang_{langs[i+1][1]}", "primary")
+                )
+            else:
+                html += _row(_tg_btn(langs[i][0], f"setlang_{langs[i][1]}", "primary"))
+        html += _row(_tg_btn("« ʙᴀᴄᴋ", "start", "success"))
+        return html
+
+    def ping_markup(self, text: str) -> str:
+        return (
+            _row(_tg_btn(f"{text}", "ping_refresh", "primary"))
+            + _row(
+                _url_btn("🌸 ꜱᴜᴘᴘᴏʀᴛ", config.SUPPORT_CHAT, random_style()),
+                _url_btn("🍹 ᴜᴘᴅᴀᴛᴇꜱ", config.SUPPORT_CHANNEL, random_style())
+            )
+            + _row(_url_btn("⛩️ ᴧᴅᴅ мᴇ ʙᴧʙʏ ⛩️", f"https://t.me/{app.username}?startgroup=true", "success"))
+        )
+
+    def play_queued(self, chat_id: int, item_id: str, _text: str) -> str:
+        return _row(
+            _tg_btn("▶️", f"controls resume {chat_id} {item_id}", "primary"),
+            _tg_btn("⏸️", f"controls pause {chat_id} {item_id}", "primary"),
+            _tg_btn("🔁", f"controls replay {chat_id} {item_id}", "primary"),
+            _tg_btn("⏭️", f"controls skip {chat_id} {item_id}", "primary"),
+            _tg_btn("⏹️", f"controls stop {chat_id} {item_id}", "primary"),
+        )
+
+    def queue_markup(self, chat_id: int, _text: str, playing: bool) -> str:
+        _action = "pause" if playing else "resume"
+        return _row(_tg_btn(_text, f"controls {_action} {chat_id} q", "success"))
+
+    def settings_markup(self, _lang: dict, admin_only: bool, force_admin: bool, language: str, chat_id: int) -> str:
+        play_mode_txt  = _lang["admin_only_txt"] if admin_only  else _lang["everyone"]
+        force_mode_txt = _lang["admin_only_txt"] if force_admin else _lang["everyone"]
+        return (
+            _row(
+                _tg_btn("  " + _lang["play_mode"], f"controls status {chat_id}", "primary"),
+                _tg_btn(play_mode_txt, "playmode", "success")
+            )
+            + _row(
+                _tg_btn("  " + _lang["force_mode"], f"controls status {chat_id}", "primary"),
+                _tg_btn(force_mode_txt, "forcemode", "success")
+            )
+            + _row(_tg_btn("" + language.upper(), "help_langs", "primary"))
+        )
+
+    # MGB Start Menu
+    def start_key(self, _lang: dict, private: bool = False) -> str:
+        return (
+            _row(_url_btn("⛩️ ᴧᴅᴅ мᴇ ʙᴧʙʏ ⛩️", f"https://t.me/{app.username}?startgroup=true", random_style()))
+            + _row(
+                _url_btn("🌸 ꜱᴜᴘᴘᴏʀᴛ 🌸", config.SUPPORT_CHAT, random_style()),
+                _url_btn("🍹 ᴜᴘᴅᴀᴛᴇꜱ 🍹", config.SUPPORT_CHANNEL, random_style())
+            )
+            + _row(_tg_btn("🏨 ʜᴇʟᴘ & ᴄᴏᴍᴍᴀɴᴅꜱ 🏨", "help", random_style()))
+            + _row(
+                _url_btn("🫂 ᴏᴡɴᴇʀ 🫂", f"tg://user?id={config.OWNER_ID}", random_style()),
+                _url_btn("💻 ᴘᴀʏᴍᴇɴᴛ Qʀ ↗", "https://github.com/user-attachments/assets/52db898f-cd48-402b-863b-4226ec462f1c", random_style())
+            )
+            + _row(_url_btn("💖 ʀɪʏᴀ ᴍᴜꜱɪᴄ ʙᴏᴛ", "https://t.me/RIYA_MUSIC_BOT_786", random_style()))
+            + _row(_url_btn("🎵 ꜱʜɪᴢᴜ ᴍᴜꜱɪᴄ 🎵", "https://t.me/MGB_NOT_FREE_BOSS_BOT", random_style()))
+            + _row(_tg_btn("🌐 ʟᴀɴɢᴜᴀɢᴇ", "help_langs", random_style()))
+        )
+
+    def yt_key(self, link: str) -> str:
+        return _row(
+            _url_btn("👀 ᴡᴀᴛᴄʜ", link, "primary"),
+            _url_btn("📥 ᴅᴏᴡɴʟᴏᴀᴅ", link, "danger")
+  )
