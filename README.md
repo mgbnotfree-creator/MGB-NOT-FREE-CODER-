@@ -1,13 +1,8 @@
+
 <div align="center">
 POWERED [ ❖𝐌𝐆𝐁☯𝐍𝐎𝐓☯𝐅𝐑𝐄𝐄❖]
 
-
-
-
 https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
-
-
-
 
 <br>
 <br><br>
@@ -19,8 +14,8 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 
 <br>
 
-[![Telegram Channel](https://img.shields.io/badge/📢_Channel-Artistbots-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white&labelColor=0D1117)](https://t.me/Artistbots)
-[![Support Group](https://img.shields.io/badge/💬_Support-ArtistMusic-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white&labelColor=0D1117)](https://t.me/Elevenytschats)
+[![Telegram Channel](https://img.shields.io/badge/📢_Channel-MGB__CODER-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white&labelColor=0D1117)](https://t.me/MGB_CODER)
+[![Support Group](https://img.shields.io/badge/💬_Support-RIYA__MUSIC-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white&labelColor=0D1117)](https://t.me/RIYA_MUSIC_BOT_786)
 
 </div>
 
@@ -28,11 +23,10 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 
 <div align="center">
 
-```
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                   ✦  ARTISTMUSIC MUSIC BOT  ✦
+✦  ARTISTMUSIC MUSIC BOT  ✦
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
 
 </div>
 
@@ -65,7 +59,7 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 <td width="50%">
 
 ### 🎵 Music Streaming
-```
+
 ✦ High Quality Audio Streaming
 ✦ YouTube Search & Play
 ✦ Direct URL Playback
@@ -75,13 +69,12 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 ✦ Auto Queue System
 ✦ Continuous Playback
 ✦ Fast Audio Processing
-```
 
 </td>
 <td width="50%">
 
 ### 🎛 Admin Controls
-```
+
 ✦ Pause / Resume Stream
 ✦ Skip Current Track
 ✦ Force Play (Skip Queue)
@@ -90,9 +83,8 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 ✦ Volume Control
 ✦ Queue Cleanup
 ✦ Seek Forward / Backward
-  (seek message auto-deletes)
+(seek message auto-deletes)
 ✦ Loop Modes
-```
 
 </td>
 </tr>
@@ -100,7 +92,7 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 <td width="50%">
 
 ### 👥 User Management
-```
+
 ✦ Authorized Users System
 ✦ Sudo Users Panel
 ✦ Global Ban System
@@ -109,13 +101,12 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 ✦ Owner Controls
 ✦ Admin-Only Play Mode
 ✦ Force Admin Mode
-```
 
 </td>
 <td width="50%">
 
 ### 🤖 Bot Management
-```
+
 ✦ Restart Command
 ✦ Broadcast System
 ✦ Maintenance Mode
@@ -124,7 +115,6 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 ✦ Auto Restart Support
 ✦ MongoDB Integration
 ✦ Multi-Language Support
-```
 
 </td>
 </tr>
@@ -132,7 +122,7 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 <td width="50%">
 
 ### 🛠 Group Manager
-```
+
 ✦ Ban / Mute / Kick (+ timed)
 ✦ Promote / Demote / Temp Admin
 ✦ Pin / Unpin / Purge / Delete
@@ -142,21 +132,19 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 ✦ VC Join / Leave Alerts (/vclog)
 ✦ User Info Lookup
 ✦ Group Photo / Title / Description
-```
 
 </td>
 <td width="50%">
 
 ### 📣 Tag & 🎴 Stickers
-```
+
 ✦ /tagall — 6 hidden emoji mentions
-  per message, FloodWait safe
+per message, FloodWait safe
 ✦ Fun Tags (GM / GN / Hi / Quotes)
 ✦ /kang — copy a whole sticker pack
 ✦ /sticker — pack from one sticker
 ✦ Packs named "<You> by Artistbots"
 ✦ Same pack or new pack prompt
-```
 
 </td>
 </tr>
@@ -180,11 +168,10 @@ https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
 
 <div align="center">
 
-```
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-         Copy  Artist.env  to  .env  and fill these values
+Copy  Artist.env  to  .env  and fill these values
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
 
 </div>
 
@@ -242,37 +229,20 @@ pip install -U -r requirements.txt
 
 # Start Command
 bash start
-```
 
-**5.** Add all environment variables from the table above
-
-**6.** Hit **Deploy** 🚀
-
+5. Add all environment variables from the table above
+6. Hit Deploy 🚀
 </details>
-
 <details>
 <summary><b>🚂 Railway — Step by Step</b></summary>
-
-<br>
-
-**1.** Fork this repository
-
-**2.** Create a new project at [railway.app](https://railway.app)
-
-**3.** Connect your GitHub repo
-
-**4.** Add environment variables
-
-**5.** Deploy 🚀
-
+1. Fork this repository
+2. Create a new project at railway.app
+3. Connect your GitHub repo
+4. Add environment variables
+5. Deploy 🚀
 </details>
-
 <details>
 <summary><b>🖥 VPS / Self-Host</b></summary>
-
-<br>
-
-```bash
 # Update system
 apt update && apt upgrade -y
 
@@ -280,7 +250,7 @@ apt update && apt upgrade -y
 apt install python3 python3-pip ffmpeg git -y
 
 # Clone repo
-git clone https://github.com/elevenyts/ArtistMusic
+git clone [https://github.com/elevenyts/ArtistMusic](https://github.com/elevenyts/ArtistMusic)
 cd ArtistMusic
 
 # Install requirements
@@ -294,35 +264,22 @@ nano .env
 bash start
 # or
 python -m ArtistMusic
-```
 
 </details>
-
 <details>
 <summary><b>🐳 Docker</b></summary>
-
-<br>
-
-```bash
 # Build the image
 docker build -t artistmusic .
 
 # Run the container (pass your .env file)
 docker run -d --env-file .env --name artistmusic artistmusic
-```
 
 </details>
-
-<br>
-
-## 〔 ✦ 〕 Commands
-
+〔 ✦ 〕 Commands
 <table>
 <tr>
 <td width="33%">
-
-**🎵 Music**
-```
+🎵 Music
 /play    — Play audio
 /vplay   — Play video
 /cplay   — Channel play
@@ -333,13 +290,10 @@ docker run -d --env-file .env --name artistmusic artistmusic
 /queue   — View queue
 /loop    — Loop mode
 /shuffle — Shuffle queue
-```
 
 </td>
 <td width="33%">
-
-**🛡 Admin**
-```
+🛡 Admin
 /reload   — Refresh admins
 /auth     — Authorize user
 /unauth   — Remove auth
@@ -350,13 +304,10 @@ docker run -d --env-file .env --name artistmusic artistmusic
 /unmute   — Unmute assistant
 /volume   — Set volume
 /stop     — Stop playback
-```
 
 </td>
 <td width="33%">
-
-**👑 Sudo / Owner**
-```
+👑 Sudo / Owner
 /addsudo     — Add sudo user
 /delsudo     — Remove sudo
 /sudolist    — List sudos
@@ -367,22 +318,15 @@ docker run -d --env-file .env --name artistmusic artistmusic
 /stats       — Bot statistics
 /restart     — Restart bot
 /logs        — View logs
-```
 
 </td>
 </tr>
 </table>
-
-<br>
-
-## 〔 ✦ 〕 Group Manager, Tag & Sticker Tools
-
+〔 ✦ 〕 Group Manager, Tag & Sticker Tools
 <table>
 <tr>
 <td width="50%">
-
-**🛠 Group Manager** *(admins)*
-```
+🛠 Group Manager (admins)
 /ban /unban /dban /sban
 /tban  <time>  — timed ban
 /mute /unmute
@@ -401,62 +345,45 @@ docker run -d --env-file .env --name artistmusic artistmusic
 /welcome [on/off]
 /vclog [on/off] — VC join/leave alerts
 /userbotjoin /userbotleave
-```
-> Time format: `30s` · `10m` · `2h` · `3d`
 
-**💣 Mass Actions** *(group owner only)*
-```
+> Time format: 30s · 10m · 2h · 3d
+> 
+💣 Mass Actions (group owner only)
 /kickall   /banall   /unbanall
 /muteall   /unmuteall /unpinall
-```
 
 </td>
 <td width="50%">
-
-**📣 Tag Everyone** *(admins)*
-```
+📣 Tag Everyone (admins)
 /tagall  /all  @all  /utag  /mention [text]
-```
-One command, five aliases. Every message carries **6 emojis** — each emoji is a hidden mention of one member, tap it to open that profile. FloodWait is handled automatically: the bot waits, **resends the same batch** (nobody is skipped) and slows down afterwards.
 
-```
+One command, five aliases. Every message carries 6 emojis — each emoji is a hidden mention of one member, tap it to open that profile. FloodWait is handled automatically: the bot waits, resends the same batch (nobody is skipped) and slows down afterwards.
 /gmtag  /gntag  /hitag
 /lifetag  /shayari
-```
-Fun tags — one member per message with a random line.
 
-```
+Fun tags — one member per message with a random line.
 /tagstop  /tagoff  /ustop
 /gmstop /gnstop /histop
 /lifestop /shayarioff
-```
-Stop a running tag session.
 
-**🎴 Stickers** *(everyone)*
-```
+Stop a running tag session.
+🎴 Stickers (everyone)
 /kang    — reply to a sticker
 /sticker — reply to a sticker
-```
-- `/kang` duplicates the **whole pack** of that sticker into a new pack owned by you.
-- `/sticker` makes a pack with **only that one sticker**. Run it again and the bot asks: **add to the same pack** or **create a new one**.
-- Pack title: **`<Your name> by Artistbots`** (`… 2`, `… 3` for later packs).
-- A pack holds one type only (static / animated / video) and up to 120 stickers.
 
+ * /kang duplicates the whole pack of that sticker into a new pack owned by you.
+ * /sticker makes a pack with only that one sticker. Run it again and the bot asks: add to the same pack or create a new one.
+ * Pack title: <Your name> by Artistbots (… 2, … 3 for later packs).
+ * A pack holds one type only (static / animated / video) and up to 120 stickers.
 </td>
 </tr>
 </table>
-
-> ℹ️ For `@all` to work the bot must be an **admin** in the group (or have privacy mode turned off in @BotFather), otherwise Telegram does not deliver plain-text messages to it.
-> ℹ️ **VC alerts** (`/vclog on|off`, default **on**): while the assistant is in the voice chat, the bot posts who **joined**, **left** or was **removed**. Alerts are queued per chat, de-duplicated and FloodWait-safe.
+> ℹ️ For @all to work the bot must be an admin in the group (or have privacy mode turned off in @BotFather), otherwise Telegram does not deliver plain-text messages to it.
+> ℹ️ VC alerts (/vclog on|off, default on): while the assistant is in the voice chat, the bot posts who joined, left or was removed. Alerts are queued per chat, de-duplicated and FloodWait-safe.
 > ℹ️ Sticker packs can only be created for users the bot has seen (any user who has messaged in the group, or started the bot).
-
-<br>
-
-## 〔 ✦ 〕 Security
-
+> 
+〔 ✦ 〕 Security
 <div align="center">
-
-```
 ╔══════════════════════════════════════════════════════╗
 ║  ✦  KEEP THESE PRIVATE — NEVER SHARE PUBLICLY  ✦    ║
 ╠══════════════════════════════════════════════════════╣
@@ -466,40 +393,22 @@ Stop a running tag session.
 ║  ✓  Keep the logger group private                    ║
 ║  ✓  Bot must be admin in group & logger group        ║
 ╚══════════════════════════════════════════════════════╝
-```
 
 </div>
-
-<br>
-
-## 〔 ✦ 〕 Support
-
-<br>
-
+〔 ✦ 〕 Support
 | Platform | Link |
-|:---:|:---:|
-| 📢 Updates Channel | [Artistbots](https://t.me/Artistbots) |
-| 💬 Support Group | [Elevenytschats](https://t.me/elevenytschats) |
-
+|---|---|
+| 📢 Updates Channel | MGB_CODER |
+| 💬 Support Group | RIYA_MUSIC_BOT_786 |
 </div>
-
-<br>
-
-## 〔 ✦ 〕 Credits
-
+〔 ✦ 〕 Credits
 <div align="center">
-
 Built on the shoulders of giants:
-
-`Pyrogram` · `PyTgCalls` · `MongoDB` · `Telegram Bot API` · `ArtistBots`
-
-<br>
-
-```
+Pyrogram · PyTgCalls · MongoDB · Telegram Bot API · ArtistBots
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
          Made with ❤️  by  Artist  ·  Powered by ArtistBots
                    © 2026 ArtistMusic · MIT License
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
 
 </div>
+
