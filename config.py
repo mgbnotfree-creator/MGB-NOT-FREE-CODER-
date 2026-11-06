@@ -67,11 +67,11 @@ class Config:
         # YouTube Cookies
         self.COOKIES_URL: List[str] = self._parse_cookies()
 
-        # Images
-        self.DEFAULT_THUMB: str = getenv("DEFAULT_THUMB", "https://graph.org/file/e9b9081be519f0e1413dd-a0fd9c7fc36c010a1c.mp4")
-        self.PING_IMG: str = getenv("PING_IMG", "https://graph.org/file/e9b9081be519f0e1413dd-a0fd9c7fc36c010a1c.mp4")
-        self.START_IMG: str = getenv("START_IMG", "https://graph.org/file/e9b9081be519f0e1413dd-a0fd9c7fc36c010a1c.mp4")
-        self.RADIO_IMG: str = getenv("RADIO_IMG", "https://graph.org/file/e9b9081be519f0e1413dd-a0fd9c7fc36c010a1c.mp4")
+        # Images (यहाँ आपकी नई इमेज का लिंक सेट कर दिया गया है)
+        self.DEFAULT_THUMB: str = getenv("DEFAULT_THUMB", "https://graph.org/file/8e084972eb12cfbca9608-b2fbb5c052543b3a1f.jpg")
+        self.PING_IMG: str = getenv("PING_IMG", "https://graph.org/file/8e084972eb12cfbca9608-b2fbb5c052543b3a1f.jpg")
+        self.START_IMG: str = getenv("START_IMG", "https://graph.org/file/8e084972eb12cfbca9608-b2fbb5c052543b3a1f.jpg")
+        self.RADIO_IMG: str = getenv("RADIO_IMG", "https://graph.org/file/8e084972eb12cfbca9608-b2fbb5c052543b3a1f.jpg")
         
         # Moderation
         self.EXCLUDED_USERNAMES: List[str] = getenv("EXCLUDED_USERNAMES", "").split()
@@ -128,4 +128,3 @@ class Config:
 
 
 config = Config()
-        
