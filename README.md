@@ -2,7 +2,10 @@
 POWERED [ ❖𝐌𝐆𝐁☯𝐍𝐎𝐓☯𝐅𝐑𝐄𝐄❖]
 
 
-https://github.com/user-attachments/assets/362051a5-690f-4a18-89b8-4321b3e4f322
+
+
+https://github.com/user-attachments/assets/0f8368da-2ffc-417d-9e38-92f010f32537
+
 
 
 
