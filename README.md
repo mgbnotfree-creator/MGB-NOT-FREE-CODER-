@@ -1,6 +1,10 @@
 <div align="center">
+POWERED [ ❖𝐌𝐆𝐁☯𝐍𝐎𝐓☯𝐅𝐑𝐄𝐄❖]
 
-<img src="https://files.catbox.moe/jns4ns.svg" width="100%" height="500">
+
+https://github.com/user-attachments/assets/362051a5-690f-4a18-89b8-4321b3e4f322
+
+
 
 <br>
 <br><br>
