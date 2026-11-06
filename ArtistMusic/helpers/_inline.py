@@ -10,27 +10,9 @@
 # Channel      : https://t.me/MGB_CODER
 # ==========================================================
 
-import random
-from typing import Optional
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from ArtistMusic import app, config, lang
 
-def _tg_btn(text: str, callback_data: str, style: Optional[str] = None) -> str:
-    style_attr = f' style="{style}"' if style else ""
-    return f'<tg-button type="callback_data"{style_attr} data="{callback_data}">{text}</tg-button>'
-
-def _url_btn(text: str, url: str, style: Optional[str] = None) -> str:
-    style_attr = f' style="{style}"' if style else ""
-    return f'<tg-button type="url"{style_attr} url="{url}">{text}</tg-button>'
-
-def _row(*buttons: str) -> str:
-    return "<tg-button-row>" + "".join(buttons) + "</tg-button-row>"
-
-def random_style() -> str:
-    return random.choice(["success", "danger", "primary"])
-
-# ---------------------------------------------------------
-# HELP MENU GROUPS
-# ---------------------------------------------------------
 HELP_GROUPS = [
     ("play",        "▶️ Play",           ["play"]),
     ("playback",    "⏸️ Playback",        ["pause", "resume", "skip", "stop"]),
@@ -57,43 +39,43 @@ HELP_GROUPS = [
 
 class Inline:
     def __init__(self):
-        pass
+        self.ikm = InlineKeyboardMarkup
+        self.ikb = InlineKeyboardButton
 
-    def cancel_dl(self, text) -> str:
-        return _row(_tg_btn(f"❌  {text}", "cancel_dl", "danger"))
+    def cancel_dl(self, text) -> InlineKeyboardMarkup:
+        return self.ikm([[self.ikb(text=f"❌  {text}", callback_data="cancel_dl")]])
 
-    # प्लेयर कंट्रोल्स
-    def controls(self, chat_id: int, status: str = None, timer: str = None, remove: bool = False) -> str:
-        html = ""
+    def controls(self, chat_id: int, status: str = None, timer: str = None, remove: bool = False) -> InlineKeyboardMarkup:
+        keyboard = []
         if status:
-            html += _row(_tg_btn(f"{status}", f"controls status {chat_id}", "primary"))
+            keyboard.append([self.ikb(text=f"{status}", callback_data=f"controls status {chat_id}")])
         elif timer:
-            html += _row(_tg_btn(f"{timer}", f"controls status {chat_id}", "primary"))
+            keyboard.append([self.ikb(text=f"{timer}", callback_data=f"controls status {chat_id}")])
 
         if not remove:
-            html += _row(
-                _tg_btn("⏸️ ᴘᴀᴜꜱᴇ", f"controls pause {chat_id}", random_style()),
-                _tg_btn("▶️ ʀᴇꜱᴜᴍᴇ", f"controls resume {chat_id}", random_style()),
-                _tg_btn("🔁 ʟᴏᴏᴘ", f"controls replay {chat_id}", random_style()),
-                _tg_btn("⏭️ ꜱᴋɪᴘ", f"controls skip {chat_id}", random_style()),
-                _tg_btn("⏹️ ꜱᴛᴏᴘ", f"controls stop {chat_id}", random_style()),
-            )
+            keyboard.append([
+                self.ikb(text="⏸️ ᴘᴀᴜꜱᴇ", callback_data=f"controls pause {chat_id}"),
+                self.ikb(text="▶️ ʀᴇꜱᴜᴍᴇ", callback_data=f"controls resume {chat_id}"),
+                self.ikb(text="🔁 ʟᴏᴏᴘ", callback_data=f"controls replay {chat_id}"),
+                self.ikb(text="⏭️ ꜱᴋɪᴘ", callback_data=f"controls skip {chat_id}"),
+                self.ikb(text="⏹️ ꜱᴛᴏᴘ", callback_data=f"controls stop {chat_id}"),
+            ])
             from ArtistMusic import db
             ap_on = chat_id in db.autoplay_on
-            html += _row(
-                _tg_btn("🟢 ᴀᴜᴛᴏᴘʟᴀʏ : ᴏɴ" if ap_on else "🔴 ᴀᴜᴛᴏᴘʟᴀʏ : ᴏꜰꜰ", f"controls autoplay {chat_id}", "success"),
-                _tg_btn("🚨 ᴄʟᴏꜱᴇ 🚨", f"controls close {chat_id}", "danger")
-            )
-        return html
+            keyboard.append([
+                self.ikb(text="🟢 ᴀᴜᴛᴏᴘʟᴀʏ : ᴏɴ" if ap_on else "🔴 ᴀᴜᴛᴏᴘʟᴀʏ : ᴏꜰꜰ", callback_data=f"controls autoplay {chat_id}"),
+                self.ikb(text="🚨 ᴄʟᴏꜱᴇ 🚨", callback_data=f"controls close {chat_id}")
+            ])
+        return self.ikm(keyboard)
 
-    def help_markup(self, _lang: dict, back: bool = False) -> str:
+    def help_markup(self, _lang: dict, back: bool = False) -> InlineKeyboardMarkup:
         if back:
-            return _row(_tg_btn("« ʙᴀᴄᴋ", "help_main", "success"))
+            return self.ikm([[self.ikb(text="« ʙᴀᴄᴋ", callback_data="help_main")]])
         else:
-            _btns = [_tg_btn(_label, f"help_{_key}", "primary") for _key, _label, _ in HELP_GROUPS]
-            rows = [_row(*_btns[n:n + 3]) for n in range(0, len(_btns), 3)]
-            rows.append(_row(_tg_btn("❌ ᴄʟᴏꜱᴇ", "start", "danger")))
-            return "".join(rows)
+            _btns = [self.ikb(text=_label, callback_data=f"help_{_key}") for _key, _label, _ in HELP_GROUPS]
+            rows = [_btns[n:n + 3] for n in range(0, len(_btns), 3)]
+            rows.append([self.ikb(text="❌ ᴄʟᴏꜱᴇ", callback_data="start")])
+            return self.ikm(rows)
 
     def help_text(self, _lang: dict, category: str):
         for _key, _label, _srcs in HELP_GROUPS:
@@ -103,90 +85,71 @@ class Inline:
                 return "\n\n".join(parts) if parts else None
         return None
 
-    def langs_markup(self) -> str:
+    def langs_markup(self) -> InlineKeyboardMarkup:
         langs = [
-            ("🇺🇸 English",    "en"), ("🇮🇳 Hindi",      "hi"),
-            ("🇮🇳 Telugu",     "te"), ("🇰🇷 Korean",     "ko"),
-            ("🇲🇲 Myanmar",    "my"), ("🇮🇩 Indonesian", "id"),
-            ("🇵🇹 Portuguese", "pt"), ("🇸🇦 Arabic",     "ar"),
-            ("🇪🇸 Spanish",    "es"), ("🇫🇷 French",     "fr"),
-            ("🇷🇺 Russian",    "ru"), ("🇩🇪 German",     "de"),
-            ("🇹🇷 Turkish",    "tr"), ("🇧🇩 Bengali",    "bn"),
-            ("🇹🇭 Thai",       "th"), ("🇻🇳 Vietnamese", "vi"),
-            ("🇯🇵 Japanese",   "ja"), ("🇨🇳 Chinese",    "zh"),
-            ("🇵🇰 Urdu",       "ur"), ("🇮🇷 Persian",    "fa"),
-            ("🇮🇳 Bhojpuri",   "bho"), ("🇳🇵 Nepali",     "ne"),
+            ("🇺🇸 English",    "en"), ("🇮🇳 Hindi",      "hi"), ("🇮🇳 Telugu",     "te"),
+            ("🇰🇷 Korean",     "ko"), ("🇲🇲 Myanmar",    "my"), ("🇮🇩 Indonesian", "id"),
         ]
-        html = ""
+        rows = []
         for i in range(0, len(langs), 2):
+            row = [self.ikb(text=langs[i][0], callback_data=f"setlang_{langs[i][1]}")]
             if i + 1 < len(langs):
-                html += _row(
-                    _tg_btn(langs[i][0], f"setlang_{langs[i][1]}", "primary"),
-                    _tg_btn(langs[i+1][0], f"setlang_{langs[i+1][1]}", "primary")
-                )
-            else:
-                html += _row(_tg_btn(langs[i][0], f"setlang_{langs[i][1]}", "primary"))
-        html += _row(_tg_btn("« ʙᴀᴄᴋ", "start", "success"))
-        return html
+                row.append(self.ikb(text=langs[i+1][0], callback_data=f"setlang_{langs[i+1][1]}"))
+            rows.append(row)
+        rows.append([self.ikb(text="« ʙᴀᴄᴋ", callback_data="start")])
+        return self.ikm(rows)
 
-    def ping_markup(self, text: str) -> str:
-        return (
-            _row(_tg_btn(f"{text}", "ping_refresh", "primary"))
-            + _row(
-                _url_btn("🌸 ꜱᴜᴘᴘᴏʀᴛ", config.SUPPORT_CHAT, random_style()),
-                _url_btn("🍹 ᴜᴘᴅᴀᴛᴇꜱ", config.SUPPORT_CHANNEL, random_style())
-            )
-            + _row(_url_btn("⛩️ ᴧᴅᴅ мᴇ ʙᴧʙʏ ⛩️", f"https://t.me/{app.username}?startgroup=true", "success"))
-        )
+    def ping_markup(self, text: str) -> InlineKeyboardMarkup:
+        return self.ikm([
+            [self.ikb(text=f"{text}", callback_data="ping_refresh")],
+            [
+                self.ikb(text="💠 ꜱᴜᴘᴘᴏʀᴛ", url=config.SUPPORT_CHAT),
+                self.ikb(text="🌐 ᴜᴘᴅᴀᴛᴇꜱ", url=config.SUPPORT_CHANNEL)
+            ],
+            [self.ikb(text="⛩️ ᴧᴅᴅ мᴇ ʙᴧʙʏ ⛩️", url=f"https://t.me/{app.username}?startgroup=true")]
+        ])
 
-    def play_queued(self, chat_id: int, item_id: str, _text: str) -> str:
-        return _row(
-            _tg_btn("▶️", f"controls resume {chat_id} {item_id}", "primary"),
-            _tg_btn("⏸️", f"controls pause {chat_id} {item_id}", "primary"),
-            _tg_btn("🔁", f"controls replay {chat_id} {item_id}", "primary"),
-            _tg_btn("⏭️", f"controls skip {chat_id} {item_id}", "primary"),
-            _tg_btn("⏹️", f"controls stop {chat_id} {item_id}", "primary"),
-        )
+    def play_queued(self, chat_id: int, item_id: str, _text: str) -> InlineKeyboardMarkup:
+        return self.ikm([[
+            self.ikb(text="▶️", callback_data=f"controls resume {chat_id} {item_id}"),
+            self.ikb(text="⏸️", callback_data=f"controls pause {chat_id} {item_id}"),
+            self.ikb(text="🔁", callback_data=f"controls replay {chat_id} {item_id}"),
+            self.ikb(text="⏭️", callback_data=f"controls skip {chat_id} {item_id}"),
+            self.ikb(text="⏹️", callback_data=f"controls stop {chat_id} {item_id}"),
+        ]])
 
-    def queue_markup(self, chat_id: int, _text: str, playing: bool) -> str:
+    def queue_markup(self, chat_id: int, _text: str, playing: bool) -> InlineKeyboardMarkup:
         _action = "pause" if playing else "resume"
-        return _row(_tg_btn(_text, f"controls {_action} {chat_id} q", "success"))
+        return self.ikm([[self.ikb(text=_text, callback_data=f"controls {_action} {chat_id} q")]])
 
-    def settings_markup(self, _lang: dict, admin_only: bool, force_admin: bool, language: str, chat_id: int) -> str:
-        play_mode_txt  = _lang["admin_only_txt"] if admin_only  else _lang["everyone"]
-        force_mode_txt = _lang["admin_only_txt"] if force_admin else _lang["everyone"]
-        return (
-            _row(
-                _tg_btn("  " + _lang["play_mode"], f"controls status {chat_id}", "primary"),
-                _tg_btn(play_mode_txt, "playmode", "success")
-            )
-            + _row(
-                _tg_btn("  " + _lang["force_mode"], f"controls status {chat_id}", "primary"),
-                _tg_btn(force_mode_txt, "forcemode", "success")
-            )
-            + _row(_tg_btn("" + language.upper(), "help_langs", "primary"))
-        )
+    def settings_markup(self, _lang: dict, admin_only: bool, force_admin: bool, language: str, chat_id: int) -> InlineKeyboardMarkup:
+        return self.ikm([
+            [self.ikb(text="  " + _lang["play_mode"], callback_data=f"controls status {chat_id}")],
+            [self.ikb(text="" + language.upper(), callback_data="help_langs")]
+        ])
 
-    # MGB Start Menu
-    def start_key(self, _lang: dict, private: bool = False) -> str:
-        return (
-            _row(_url_btn("⛩️ ᴧᴅᴅ мᴇ ʙᴧʙʏ ⛩️", f"https://t.me/{app.username}?startgroup=true", random_style()))
-            + _row(
-                _url_btn("🌸 ꜱᴜᴘᴘᴏʀᴛ 🌸", config.SUPPORT_CHAT, random_style()),
-                _url_btn("🍹 ᴜᴘᴅᴀᴛᴇꜱ 🍹", config.SUPPORT_CHANNEL, random_style())
-            )
-            + _row(_tg_btn("🏨 ʜᴇʟᴘ & ᴄᴏᴍᴍᴀɴᴅꜱ 🏨", "help", random_style()))
-            + _row(
-                _url_btn("🫂 ᴏᴡɴᴇʀ 🫂", f"tg://user?id={config.OWNER_ID}", random_style()),
-                _url_btn("💻 ᴘᴀʏᴍᴇɴᴛ Qʀ ↗", "https://github.com/user-attachments/assets/52db898f-cd48-402b-863b-4226ec462f1c", random_style())
-            )
-            + _row(_url_btn("💖 ʀɪʏᴀ ᴍᴜꜱɪᴄ ʙᴏᴛ", "https://t.me/RIYA_MUSIC_BOT_786", random_style()))
-            + _row(_url_btn("🎵 ꜱʜɪᴢᴜ ᴍᴜꜱɪᴄ 🎵", "https://t.me/MGB_NOT_FREE_BOSS_BOT", random_style()))
-            + _row(_tg_btn("🌐 ʟᴀɴɢᴜᴀɢᴇ", "help_langs", random_style()))
-        )
+    # 🔥 MGB Start Menu - BLUE THEME DESIGN 🔵 🔥
+    def start_key(self, _lang: dict, private: bool = False) -> InlineKeyboardMarkup:
+        return self.ikm([
+            [self.ikb(text="⛩️ ᴧᴅᴅ мᴇ ʙᴧʙʏ ⛩️", url=f"https://t.me/{app.username}?startgroup=true")],
+            [
+                self.ikb(text="💠 ꜱᴜᴘᴘᴏʀᴛ 💠", url=config.SUPPORT_CHAT),
+                self.ikb(text="🌐 ᴜᴘᴅᴀᴛᴇꜱ 🌐", url=config.SUPPORT_CHANNEL)
+            ],
+            [self.ikb(text="📘 ʜᴇʟᴘ & ᴄᴏᴍᴍᴀɴᴅꜱ 📘", callback_data="help")],
+            [
+                self.ikb(text="🫂 ᴏᴡɴᴇʀ 🫂", url=f"tg://user?id={config.OWNER_ID}"),
+                self.ikb(text="💻 ᴘᴀʏᴍᴇɴᴛ Qʀ ↗", url="https://github.com/user-attachments/assets/52db898f-cd48-402b-863b-4226ec462f1c")
+            ],
+            [self.ikb(text="🔵 ʀɪʏᴀ ᴍᴜꜱɪᴄ ʙᴏᴛ 🔵", url="https://t.me/RIYA_MUSIC_BOT_786")],
+            [self.ikb(text="🟦 ꜱʜɪᴢᴜ ᴍᴜꜱɪᴄ 🟦", url="https://t.me/MGB_NOT_FREE_BOSS_BOT")],
+            [self.ikb(text="🌍 ʟᴀɴɢᴜᴀɢᴇ", callback_data="help_langs")]
+        ])
 
-    def yt_key(self, link: str) -> str:
-        return _row(
-            _url_btn("👀 ᴡᴀᴛᴄʜ", link, "primary"),
-            _url_btn("📥 ᴅᴏᴡɴʟᴏᴀᴅ", link, "danger")
-  )
+    def yt_key(self, link: str) -> InlineKeyboardMarkup:
+        return self.ikm([
+            [
+                self.ikb(text="👀 ᴡᴀᴛᴄʜ", url=link),
+                self.ikb(text="📥 ᴅᴏᴡɴʟᴏᴀᴅ", url=link)
+            ]
+        ])
