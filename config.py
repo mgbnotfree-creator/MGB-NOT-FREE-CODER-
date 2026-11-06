@@ -7,7 +7,7 @@
 # Type         : API Based Telegram Music Bot
 #
 # Bot          : @ArtistApibot
-# Channel      : https://t.me/artistbots
+# Channel      : https://t.me/MGB_CODER
 # GitHub       : https://github.com/elevenyts/ArtistMusic
 #
 # Unauthorized copying, modification, or redistribution
@@ -43,8 +43,8 @@ class Config:
         self.SESSION3: str = getenv("STRING_SESSION3", "")
 
         # Support Links
-        self.SUPPORT_CHANNEL: str = getenv("SUPPORT_CHANNEL", "https://t.me/Elevenytschats")
-        self.SUPPORT_CHAT: str = getenv("SUPPORT_CHAT", "https://t.me/Artistbots")
+        self.SUPPORT_CHANNEL: str = getenv("SUPPORT_CHANNEL", "https://t.me/MGB_CODER")
+        self.SUPPORT_CHAT: str = getenv("SUPPORT_CHAT", "https://t.me/RIYA_MUSIC_BOT_786")
 
         # Excluded Chats
         self.EXCLUDED_CHATS: List[int] = self._parse_excluded_chats()
@@ -56,7 +56,7 @@ class Config:
         self.VIDEO_PLAY: bool = self._str_to_bool(getenv("VIDEO_PLAY", "True"))
         self.VIDEO_MAX_HEIGHT: int = self._parse_video_height()
 
-        # ArtistBots API t.me/Artistbots 
+        # ArtistBots API https://t.me/MGB_CODER 
         self.ARTISTBOTS_API_URL: str = getenv("ARTISTBOTS_API_URL", "https://api.artistbotsapi.bond")
         self.ARTISTBOTS_KEY: str = getenv("ARTISTBOTS_KEY", "")
         self.ENABLE_API: bool = self._str_to_bool(getenv("ENABLE_API", "True"))
@@ -128,3 +128,4 @@ class Config:
 
 
 config = Config()
+        
