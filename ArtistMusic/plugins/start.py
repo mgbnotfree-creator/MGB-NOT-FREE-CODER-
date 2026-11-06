@@ -7,7 +7,7 @@
 # Type         : API Based Telegram Music Bot
 #
 # Bot          : @ArtistApibot
-# Channel      : https://t.me/artistbots
+# Channel      : https://t.me/MGB_CODER
 # GitHub       : https://github.com/elevenyts/ArtistMusic
 #
 # Unauthorized copying, modification, or redistribution
@@ -136,3 +136,4 @@ async def _new_member(_, message: types.Message):
             if await db.is_chat(message.chat.id):
                 return
             await db.add_chat(message.chat.id)
+        
