@@ -18,9 +18,9 @@ from ArtistMusic import app, config, lang
 # HELP MENU: 21 buttons (merged groups)
 # ---------------------------------------------------------
 HELP_GROUPS = [
-    ("play",        "▶️ Play",           ["play"]),
-    ("playback",    "⏸️ Playback",        ["pause", "resume", "skip", "stop"]),
-    ("seek",        "⏩ Seek/Loop",      ["seek", "loop", "shuffle"]),
+    ("play",        "📽Play",           ["play"]),
+    ("playback",    "⏭Playback",        ["pause", "resume", "skip", "stop"]),
+    ("seek",        "✦ Seek/Loop",      ["seek", "loop", "shuffle"]),
     ("queue",       "📋 Queue",          ["queue", "autoplay"]),
     ("playmode",    "⚙️ Playmode",       ["playmode", "link", "autoleave"]),
     ("ban",         "🚫 Ban",            ["ban", "gban"]),
@@ -85,11 +85,11 @@ class Inline:
         if not remove:
             keyboard.append(
                 [
-                    self.ikb(text="⏸️",  callback_data=f"controls pause {chat_id}",  style=ButtonStyle.PRIMARY),
-                    self.ikb(text="▶️",   callback_data=f"controls resume {chat_id}", style=ButtonStyle.PRIMARY),
-                    self.ikb(text="🔁",   callback_data=f"controls replay {chat_id}", style=ButtonStyle.PRIMARY),
-                    self.ikb(text="⏭️", callback_data=f"controls skip {chat_id}",   style=ButtonStyle.PRIMARY),
-                    self.ikb(text="⏹️",   callback_data=f"controls stop {chat_id}",   style=ButtonStyle.PRIMARY),
+                    self.ikb(text="II",  callback_data=f"controls pause {chat_id}",  style=ButtonStyle.PRIMARY),
+                    self.ikb(text="▷",   callback_data=f"controls resume {chat_id}", style=ButtonStyle.PRIMARY),
+                    self.ikb(text="↻",   callback_data=f"controls replay {chat_id}", style=ButtonStyle.PRIMARY),
+                    self.ikb(text="⏭",  callback_data=f"controls skip {chat_id}",   style=ButtonStyle.PRIMARY),
+                    self.ikb(text="▢",   callback_data=f"controls stop {chat_id}",   style=ButtonStyle.PRIMARY),
                 ]
             )
             from ArtistMusic import db
@@ -97,12 +97,12 @@ class Inline:
             keyboard.append(
                 [
                     self.ikb(
-                        text="🟢 ᴀᴜᴛᴏᴘʟᴀʏ : ᴏɴ" if ap_on else "🔴 ᴀᴜᴛᴏᴘʟᴀʏ : ᴏꜰꜰ",
+                        text="AUTOPLAY : ON" if ap_on else "AUTOPLAY : OFF",
                         callback_data=f"controls autoplay {chat_id}",
                         style=ButtonStyle.SUCCESS,
                     ),
                     self.ikb(
-                        text="🚨 ᴄʟᴏꜱᴇ 🚨",
+                        text="• CLOSE •",
                         callback_data=f"controls close {chat_id}",
                         style=ButtonStyle.DANGER,
                     ),
@@ -203,11 +203,11 @@ class Inline:
     ) -> types.InlineKeyboardMarkup:
         return self.ikm([
             [
-                self.ikb(text="▶️",   callback_data=f"controls resume {chat_id} {item_id}", style=ButtonStyle.PRIMARY),
-                self.ikb(text="⏸️",  callback_data=f"controls pause {chat_id} {item_id}",  style=ButtonStyle.PRIMARY),
-                self.ikb(text="🔁",   callback_data=f"controls replay {chat_id} {item_id}", style=ButtonStyle.PRIMARY),
-                self.ikb(text="⏭️", callback_data=f"controls skip {chat_id} {item_id}",   style=ButtonStyle.PRIMARY),
-                self.ikb(text="⏹️",   callback_data=f"controls stop {chat_id} {item_id}",   style=ButtonStyle.PRIMARY),
+                self.ikb(text="▷",   callback_data=f"controls resume {chat_id} {item_id}", style=ButtonStyle.PRIMARY),
+                self.ikb(text="II",  callback_data=f"controls pause {chat_id} {item_id}",  style=ButtonStyle.PRIMARY),
+                self.ikb(text="↻",   callback_data=f"controls replay {chat_id} {item_id}", style=ButtonStyle.PRIMARY),
+                self.ikb(text="⏭",   callback_data=f"controls skip {chat_id} {item_id}",   style=ButtonStyle.PRIMARY),
+                self.ikb(text="▢",   callback_data=f"controls stop {chat_id} {item_id}",   style=ButtonStyle.PRIMARY),
             ],
         ])
 
