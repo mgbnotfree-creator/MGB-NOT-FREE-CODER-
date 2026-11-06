@@ -1,17 +1,13 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
 # Type         : API Based Telegram Music Bot
 #
-# Bot          : @ArtistApibot 
-# Channel      : https://t.me/artistbots
-# GitHub       : https://github.com/elevenyts/ArtistXMusic
-#
-# Unauthorized copying, modification, or redistribution
-# of this source code without permission is prohibited.
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 # ==========================================================
 from pyrogram import types
 from pyrogram.enums import ButtonStyle
@@ -20,7 +16,6 @@ from ArtistMusic import app, config, lang
 
 # ---------------------------------------------------------
 # HELP MENU: 21 buttons (merged groups)
-# (callback key, button label, [old help_* keys whose text is merged])
 # ---------------------------------------------------------
 HELP_GROUPS = [
     ("play",        "▶️ Play",           ["play"]),
@@ -147,7 +142,6 @@ class Inline:
         return self.ikm(rows)
 
     def help_text(self, _lang: dict, category: str):
-        """Merged help text for a group key (None if category is not a group)."""
         for _key, _label, _srcs in HELP_GROUPS:
             if _key == category:
                 parts = [_lang.get(f"help_{k}") for k in _srcs]
@@ -266,15 +260,12 @@ class Inline:
                 self.ikb(text="  " + lang["support"], url=config.SUPPORT_CHAT),
                 self.ikb(text=" " + lang["channel"], url=config.SUPPORT_CHANNEL),
             ],
-            # --- MGB NOT FREE: NEW BUTTONS ADDED HERE ---
             [
                 self.ikb(text="👨‍💻 ᴅᴇᴠᴇʟᴏᴘᴇʀ", url="https://t.me/MGB_NOT_FREE"),
                 self.ikb(text="🎵 ꜱʜɪᴢᴜ ᴍᴜꜱɪᴄ", url="https://t.me/MGB_NOT_FREE_BOSS_BOT"),
             ],
-            # ---------------------------------------------
             [
-                self.ikb(text="ypɨɐʊ\u025cɐ\u0288p\u0267",  callback_data="help_langs"),
-                self.ikb(text="ɔ\u0247\u0260\u0247\u028f\u024f\u0258\u0247\u0280", url="https://github.com/elevenyts/ArtistXMusic"),
+                self.ikb(text="🌐 LANGUAGE",  callback_data="help_langs"),
             ],
         ]
         return self.ikm(rows)
@@ -286,4 +277,3 @@ class Inline:
                 self.ikb(text="📥 ᴅᴏᴡɴʟᴏᴀᴅ", url=link,       style=ButtonStyle.DANGER),
             ],
         ])
-    
