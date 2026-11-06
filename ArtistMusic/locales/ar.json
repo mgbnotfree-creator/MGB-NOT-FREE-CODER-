@@ -71,7 +71,7 @@
   "ping_pong": "🎵  <b>˹ ᴀʀᴛɪsᴛ ˼  ╌  حالة النظام</b>\n\n<blockquote>━━━  الأداء  ━━━\n\n⚡  السرعة        ╌  <code>{0} ملي ثانية</code>\n⏰  وقت التشغيل   ╌  <code>{1}</code>\n📞  PyTgCalls     ╌  <code>{2} ملي ثانية</code>\n💾  الذاكرة       ╌  <code>{3}</code>\n🖥  المعالج       ╌  <code>{4}%</code></blockquote>\n\n<blockquote>━━━  نطاق وصولنا  ━━━\n\n◈  +{5} مجموعة نشطة\n◈  صوت Opus كريستالي واضح\n◈  قائمة انتظار ذكية (30+ أغنية)\n◈  دعم متعدد للمساعدين\n◈  تشغيل موثوق 24/7</blockquote>",
   "play_admin": "<blockquote>🛡  للمسؤولين فقط\n\nيُسمح للمسؤولين فقط بتشغيل الموسيقى في هذه الدردشة.</blockquote>",
   "play_banned": "<blockquote>🚫  المساعد محظور\n\nالمساعد {0} محظور من مجموعتك.\n\n🆔  <code>{1}</code>\n📛  {2}\n🔗  {3}</blockquote>",
-  "play_media": "➲ <b>يتم التشغيل الآن</b>   \n\n🎧  <a href={0}><b>{1}</b></a>\n🕔  {2}  |  👤  {3}\n\n<i>❤️ POWERED BY <a href=\"https://t.me/MGB_CODER\">❖ MGB NOT FREE ❖</a></i>",
+  "play_media": "➲ <b>يتم التشغيل الآن</b>   \n\n🎧  <a href={0}><b>{1}</b></a>\n🕔  {2}  |  👤  {3}\n\n<i>❤️  بواسطة  <a href=\"https://t.me/ArtistBots\">˹ ᴀʀᴛɪsᴛ ˼</a></i>",
   "play_log": "<blockquote>🎵  سجل تشغيل {0}\n\n🏠  الدردشة: <code>{1}</code>  ┊  {2}\n👤  المستخدم: <code>{3}</code>  ┊  {4}\n🔗  {5}\n\n🎶  العنوان: {6}\n⏱  المدة: {7} دقيقة</blockquote>",
   "play_queued": "<blockquote>🎵  تمت الإضافة إلى قائمة الانتظار\n\n🟢  الترتيب  ╌  #{0}\n🎵  <a href={1}>{2}</a>\n⏰  المدة  ╌  {3} دقيقة\n👤  بواسطة  ╌  {4}</blockquote>",
   "play_usage": "<blockquote>📋  <b>الاستخدام:</b>\n\n<code>/play [اسم الأغنية / رابط يوتيوب / الرد على مقطع صوتي]</code></blockquote>",
@@ -150,4 +150,4 @@
   "help_bots": "<b>🤖  البوتات  وبيانات  المجموعة</b>\n\n<blockquote>▸  /bots — عرض قائمة البوتات في المجموعة\n▸  /groupdata — معلومات المجموعة (أيضًا /chatinfo /groupinfo)</blockquote>",
   "help_broadcast": "<b>📢  البث</b>\n\n<blockquote>▸  /broadcast [reply] — البث إلى جميع الدردشات\n▸  -nochat — استثناء المجموعات\n▸  -user — تضمين المستخدمين\n▸  -copy — بدون وسم إعادة التوجيه\n▸  /stop_gcast — إيقاف البث الجاري</blockquote>",
   "help_active": "<b>📞  المكالمات  النشطة</b>\n\n<blockquote>▸  /ac — عدد المكالمات النشطة\n▸  /activevc — عرض المكالمات النشطة</blockquote>",
-  "help_logs": "<b>📝  السجلات</b>\n\n<blockquote>▸  /logs — إرسا
+  "help_logs": "<b>📝  السجلات</b>\n\n<blockquote>▸  /logs — إرسال ملف ا
