@@ -1,18 +1,16 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
-# ==========================================================
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Plugin   : Single-user moderation
-# Location : ArtistMusic/Artistbots/actions.py
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-#   /ban /unban /mute /unmute /kick /dban /sban /tban /tmute /kickme
-#   Every command accepts a reply, @username or user-ID.
-#   Time format for /tban and /tmute: 30s, 10m, 2h, 3d
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
 
 import asyncio
