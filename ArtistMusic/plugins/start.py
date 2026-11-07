@@ -131,6 +131,40 @@ async def _send_rich_start(chat_id: int, photo_url: str, text: str):
     return None
 
 
+async def _send_rich_help(chat_id: int, photo_url: str, text: str, html_buttons: str):
+    """Sends help message using sendRichMessage API with colorful HTML buttons"""
+    if not config.BOT_TOKEN:
+        return None
+
+    safe_text = text.replace('\n', '<br>')
+    rich_body = f"<blockquote>{safe_text}</blockquote><br><br>{html_buttons}"
+
+    rich_message = {
+        "html": f'<img src="tg://photo?id=help_cover"/><br>{rich_body}',
+        "media": [{
+            "id": "help_cover",
+            "media": {"type": "photo", "media": photo_url}
+        }]
+    }
+
+    data = {
+        "chat_id": chat_id,
+        "rich_message": rich_message
+    }
+
+    url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendRichMessage"
+    try:
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, json=data) as resp:
+                result = await resp.json()
+                if result.get("ok"):
+                    return result["result"]
+    except Exception as e:
+        logger.warning(f"Rich Message Help error: {e}")
+    return None
+
+
 # ----------------------------------------------------------
 # 💡 HELP COMMAND & DEEP-LINK HANDLER (100% WORKING)
 # ----------------------------------------------------------
@@ -138,7 +172,7 @@ async def _send_rich_start(chat_id: int, photo_url: str, text: str):
 @app.on_message(filters.command(["help"]) & filters.private & ~app.bl_users)
 @lang.language()
 async def _help(_, m: types.Message):
-    """Handle /help command and deep-link clicks safely."""
+    """Handle /help command and deep-link clicks safely using Rich Message API."""
     try:
         await m.delete()
     except Exception:
@@ -146,38 +180,28 @@ async def _help(_, m: types.Message):
 
     help_text = (
         f"<b>✨ {app.name} - HELP MENU ✨</b>\n\n"
-        "<blockquote>"
         "• <b>/play [Song Name / URL]</b> - Play music in voice chat\n"
         "• <b>/vplay [Video Name / URL]</b> - Play video in voice chat\n"
         "• <b>/skip</b> - Skip to the next song\n"
         "• <b>/pause</b> - Pause the music stream\n"
         "• <b>/resume</b> - Resume the music stream\n"
         "• <b>/stop</b> - Stop music and clear queue\n"
-        "• <b>/settings</b> - Configure bot settings (Admin only)\n"
-        "</blockquote>\n\n"
-        "<i>💡 Need more help? Join our channel @MGB_CODER!</i>"
+        "• <b>/settings</b> - Configure bot settings (Admin only)"
     )
 
+    html_buttons = buttons.help_markup(m.lang)
+    sent_data = None
     try:
-        sent = await utils.reply(
-            m,
-            photo=config.START_IMG,
-            caption=help_text,
-            reply_markup=buttons.help_markup(m.lang),
-            quote=True,
-        )
-        if sent:
-            await app.send_reaction(m.chat.id, sent.id, "👏")
+        if config.START_IMG and config.START_IMG.strip():
+            sent_data = await _send_rich_help(m.chat.id, config.START_IMG, help_text, html_buttons)
+        else:
+            raise ValueError("No Photo")
     except Exception:
+        pass
+
+    if sent_data and "message_id" in sent_data:
         try:
-            sent = await utils.reply(
-                m,
-                text=help_text,
-                reply_markup=buttons.help_markup(m.lang),
-                quote=True,
-            )
-            if sent:
-                await app.send_reaction(m.chat.id, sent.id, "👏")
+            await app.send_reaction(m.chat.id, sent_data["message_id"], "👏")
         except Exception:
             pass
 
@@ -304,4 +328,3 @@ async def _new_member(_, message: types.Message):
             if await db.is_chat(message.chat.id):
                 return
             await db.add_chat(message.chat.id)
-        
