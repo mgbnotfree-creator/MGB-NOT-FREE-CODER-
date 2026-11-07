@@ -216,13 +216,12 @@ class TgCall(PyTgCalls):
                 duration_sec = media.duration_sec if not media.is_live else 0
                 
                 rich_body = (
-                    f"<blockquote>🎵 STREAMING MUSIC ━━★</blockquote><br><br>"
+                    f"<blockquote>🎵 STREAMING MUSIC ━━★</blockquote><br>"
                     f"<blockquote>"
                     f"● 🎶 TITLE ➥ <b>{safe_title}</b><br>"
                     f"● 🚀 DURATION ➥ <b>{media.duration}</b><br>"
                     f"● ⭐ REQUESTED BY ➥ {safe_user}<br>"
-                    f"</blockquote><br><br>"
-                    f"<blockquote>👑 POWERED BY ♡ ⇊ MOON x MUSIC ⇊</blockquote><br><br>"
+                    f"</blockquote><br>"
                 )
                 
                 try:
@@ -253,6 +252,14 @@ class TgCall(PyTgCalls):
                                     def __init__(self, msg_id):
                                         self.id = msg_id
                                 sent_photo = MockMessage(result["result"]["message_id"])
+                            else:
+                                fallback_msg = await app.send_photo(
+                                    chat_id=target_chat_for_messages,
+                                    photo=_thumb,
+                                    caption=f"🎵 <b>{safe_title}</b>\n👤 Requested by: {safe_user}",
+                                    reply_markup=inline.controls(chat_id, timer=inline.progress_text(media.time, duration_sec))
+                                )
+                                sent_photo = fallback_msg
                 except Exception:
                     pass
 
@@ -262,7 +269,7 @@ class TgCall(PyTgCalls):
                     asyncio.create_task(preload.start_preload(chat_id))
                 except Exception:
                     pass
-        except FileNotFoundError:
+                            except FileNotFoundError:
             if message:
                 try:
                     await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
@@ -595,4 +602,4 @@ class TgCall(PyTgCalls):
             await client.start()
             self.clients.append(client)
             await self.decorators(client)
-                
+                   
