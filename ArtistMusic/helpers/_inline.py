@@ -1,15 +1,3 @@
-# ==========================================================
-# Copyright (c) 2026 MGB NOT FREE CODER
-# All Rights Reserved.
-#
-# Project      : MGB API Telegram Music Bot
-# Powered By   : ❖ MGB NOT FREE ❖
-# Type         : API Based Telegram Music Bot
-#
-# Bot          : @Yasmeen_api_bot
-# Channel      : https://t.me/MGB_CODER
-# ==========================================================
-
 import time
 from pyrogram import types
 from pyrogram.enums import ButtonStyle
@@ -47,30 +35,30 @@ def _styles(playing: bool):
 
 
 # ---------------------------------------------------------
-# HELP MENU: 21 buttons (merged groups)
+# HELP MENU: 21 buttons with custom style symbols & emojis
 # ---------------------------------------------------------
 HELP_GROUPS = [
-    ("play",        "📽Play",           ["play"]),
-    ("playback",    "⏭Playback",        ["pause", "resume", "skip", "stop"]),
-    ("seek",        "✦ Seek/Loop",      ["seek", "loop", "shuffle"]),
-    ("queue",       "📋 Queue",          ["queue", "autoplay"]),
-    ("playmode",    "⚙️ Playmode",       ["playmode", "link", "autoleave"]),
-    ("ban",         "🚫 Ban",            ["ban", "gban"]),
-    ("mute",        "🔇 Mute",           ["mute", "mass"]),
-    ("promote",     "⭐ Promote",        ["promote", "auth"]),
-    ("group",       "👥 Group",          ["group", "welcome"]),
-    ("clean",       "🧹 Clean",          ["purge", "zombies"]),
-    ("tag",         "🏷️ Tag All",        ["tag"]),
-    ("sticker",     "🎨 Stickers",       ["sticker"]),
-    ("info",        "ℹ️ Info",           ["info", "bots"]),
-    ("sudo",        "👑 Sudo",           ["sudo"]),
-    ("broadcast",   "📢 Broadcast",      ["broadcast"]),
-    ("blacklist",   "⛔ Blacklist",      ["blchat", "bluser"]),
-    ("maintenance", "🛠️ Maintenance",    ["maintenance"]),
-    ("active",      "📊 Active VCs",     ["active", "logs"]),
-    ("restart",     "🔄 Restart",        ["restart", "leave"]),
-    ("eval",        "💻 Eval",           ["eval"]),
-    ("ping",        "🏓 Ping",           ["ping", "stats"]),
+    ("play",        "𓇼 Play",           ["play"]),
+    ("playback",    "🐚 Playback",       ["pause", "resume", "skip", "stop"]),
+    ("seek",        "𖤍 Seek/Loop",      ["seek", "loop", "shuffle"]),
+    ("queue",       "×̷̷͜×̷ Queue",        ["queue", "autoplay"]),
+    ("playmode",    "𓆩♛𓆪 Playmode",     ["playmode", "link", "autoleave"]),
+    ("ban",         "𝄞 Ban",            ["ban", "gban"]),
+    ("mute",        "🦋 Mute",           ["mute", "mass"]),
+    ("promote",     "🕷 Promote",       ["promote", "auth"]),
+    ("group",       "✿ Group",          ["group", "welcome"]),
+    ("clean",       "𖤓 Clean",          ["purge", "zombies"]),
+    ("tag",         "𓇼 Tag All",        ["tag"]),
+    ("sticker",     "🐚 Stickers",      ["sticker"]),
+    ("info",        "𖤍 Info",           ["info", "bots"]),
+    ("sudo",        "×̷̷͜×̷ Sudo",         ["sudo"]),
+    ("broadcast",   "𓆩♛𓆪 Broadcast",    ["broadcast"]),
+    ("blacklist",   "𝄞 Blacklist",      ["blchat", "bluser"]),
+    ("maintenance", "🦋 Maintenance",   ["maintenance"]),
+    ("active",      "🕷 Active VCs",    ["active", "logs"]),
+    ("restart",     "✿ Restart",        ["restart", "leave"]),
+    ("eval",        "𖤓 Eval",           ["eval"]),
+    ("ping",        "𓇼 Ping",           ["ping", "stats"]),
 ]
 
 
@@ -146,35 +134,34 @@ class Inline:
         return self.ikm(keyboard)
 
 
+    # 🎨 3. COLORFUL HTML HELP MENU (VelocityBots Style HTML Buttons)
     def help_markup(
         self, _lang: dict, back: bool = False
-    ) -> types.InlineKeyboardMarkup:
+    ) -> str:
+        """हेल्प मेन्यू के लिए कलरफुल HTML बटन्स (3-3 के ग्रिड में)"""
         if back:
-            rows = [
-                [self.ikb(
-                    text="« ʙᴀᴄᴋ",
-                    callback_data="help_main",
-                    style=ButtonStyle.SUCCESS,
-                )]
-            ]
-        else:
-            _btns = [
-                self.ikb(
-                    text=_label,
-                    callback_data=f"help_{_key}",
-                    style=ButtonStyle.PRIMARY,
-                )
-                for _key, _label, _ in HELP_GROUPS
-            ]
-            rows = [_btns[n:n + 3] for n in range(0, len(_btns), 3)]
-            rows.append([
-                self.ikb(
-                    text="❌ ᴄʟᴏꜱᴇ",
-                    callback_data="start",
-                    style=ButtonStyle.SUCCESS,
-                )
-            ])
-        return self.ikm(rows)
+            return (
+                f'<tg-button-row align="center">'
+                f'<tg-button type="callback_data" style="success" data="help_main">« ʙᴀᴄᴋ</tg-button>'
+                f'</tg-button-row>'
+            )
+        
+        rows_html = ""
+        batch_size = 3
+        for i in range(0, len(HELP_GROUPS), batch_size):
+            chunk = HELP_GROUPS[i:i + batch_size]
+            row_buttons = ""
+            for idx, (_key, _label, _) in enumerate(chunk):
+                style = "success" if (i + idx) % 3 == 1 else ("danger" if (i + idx) % 3 == 2 else "primary")
+                row_buttons += f'<tg-button type="callback_data" style="{style}" data="help_{_key}">{_label}</tg-button>'
+            rows_html += f'<tg-button-row align="center">{row_buttons}</tg-button-row>'
+        
+        rows_html += (
+            f'<tg-button-row align="center">'
+            f'<tg-button type="callback_data" style="danger" data="start">❌ ᴄʟᴏꜱᴇ</tg-button>'
+            f'</tg-button-row>'
+        )
+        return rows_html
 
     def help_text(self, _lang: dict, category: str):
         for _key, _label, _srcs in HELP_GROUPS:
@@ -222,7 +209,7 @@ class Inline:
             ],
             [
                 self.ikb(text="🌸 ꜱᴜᴘᴘᴏʀᴛ", url=config.SUPPORT_CHANNEL, style=ButtonStyle.PRIMARY),
-                self.ikb(text="🍹 ᴜᴘᴅᴀᴛᴇꜱ",  url=config.SUPPORT_CHAT,    style=ButtonStyle.PRIMARY),
+                self.ikb(text="🍹 ᴜᴘᴅᴧᴛᴇꜱ",  url=config.SUPPORT_CHAT,    style=ButtonStyle.PRIMARY),
             ],
             [
                 self.ikb(
@@ -312,3 +299,4 @@ class Inline:
                 self.ikb(text="📥 ᴅᴏᴡɴʟᴏᴀᴅ", url=link,       style=ButtonStyle.DANGER),
             ],
         ])
+    
