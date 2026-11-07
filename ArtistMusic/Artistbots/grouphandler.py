@@ -1,18 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
-# ==========================================================
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Plugin   : Group settings (pin / photo / title / description)
-# Location : ArtistMusic/Artistbots/grouphandler.py
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-#   /pin /unpin (reply)  /setphoto (reply to photo)  /removephoto
-#   /settitle <text>     /setdescription <text>   (alias: /setdiscription)
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 from pyrogram import filters
 from pyrogram.errors import RPCError
