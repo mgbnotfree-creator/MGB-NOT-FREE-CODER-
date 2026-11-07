@@ -30,7 +30,7 @@ async def _send_rich_start(chat_id: int, photo_url: str, text: str):
     # Text को HTML Format में बदलना
     safe_text = text.replace('\n', '<br>')
     
-    # 🎨 HTML BUTTONS (बिना SOURCE और LANGS के, 100% Working Help Button)
+    # 🎨 HTML BUTTONS (100% Working Help Button via Deep-Link URL)
     rich_body = (
         f"<blockquote>{safe_text}</blockquote><br><br>"
         f'<tg-button-row align="center">'
@@ -135,12 +135,13 @@ async def start(_, message: types.Message):
             text=_text
         )
     
-    # 🌟 EXTRA RANDOM REACTION EFFECTS
-    if private and sent_data:
+    # 🌟 FIXED: Reliable Reaction Effect on Rich Message
+    if private and sent_data and "message_id" in sent_data:
         try:
             cool_reactions = ["❤️‍🔥", "⚡", "🔥", "🥰", "🎉", "💖", "🍓"]
             selected_emoji = random.choice(cool_reactions)
             
+            await asyncio.sleep(0.5)  # छोटा डिले ताकि मैसेज पूरी तरह रेंडर हो जाए
             await app.send_reaction(
                 chat_id=message.chat.id,
                 message_id=sent_data["message_id"],
@@ -154,4 +155,4 @@ async def start(_, message: types.Message):
             return
         await utils.send_log(message)
         return await db.add_user(message.from_user.id)
-    
+                    
