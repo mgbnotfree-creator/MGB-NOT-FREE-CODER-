@@ -4,59 +4,76 @@
 #
 # Project      : MGB API Telegram Music Bot
 # Powered By   : ❖ MGB NOT FREE ❖
-# Type         : API Based Telegram Music Bot
-#
 # Bot          : @Yasmeen_api_bot
 # Channel      : https://t.me/MGB_CODER
-#
-# Unauthorized copying, modification, or redistribution
-# of this source code without permission is prohibited.
 # ==========================================================
 
 import asyncio
 import aiohttp
 import json
+import html
 from pyrogram import enums, filters, types
 
 from ArtistMusic import app, config, db, lang, logger
-from ArtistMusic.helpers import buttons, utils
+from ArtistMusic.helpers import utils
 
 # ----------------------------------------------------------
-# 🎨 COLORFUL BUTTONS (DIRECT TELEGRAM API) 🎨
+# 🎨 SMART RICH MESSAGE API (LIKE VELOCITYBOTS) 🎨
 # ----------------------------------------------------------
-_http = None
 
-def _get_session():
-    global _http
-    if _http is None or _http.closed:
-        _http = aiohttp.ClientSession()
-    return _http
-
-async def _send_start_colored(chat_id: int, photo_url: str, caption: str, buttons_list: list):
-    """Bypasses Pyrogram limits to send colorful buttons directly via Telegram API."""
+async def _send_rich_start(chat_id: int, photo_url: str, text: str):
+    """Sends start message using the undocumented sendRichMessage API with <tg-button> HTML"""
     if not config.BOT_TOKEN:
         return None
 
-    url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendPhoto"
-    try:
-        form = aiohttp.FormData()
-        form.add_field("chat_id", str(chat_id))
-        form.add_field("photo", photo_url)
-        form.add_field("caption", caption)
-        form.add_field("parse_mode", "HTML")
-        form.add_field("reply_markup", json.dumps({"inline_keyboard": buttons_list}))
+    # Text को HTML Format में बदलना
+    safe_text = text.replace('\n', '<br>')
+    
+    # 🎨 HTML BUTTONS (गोल और स्मूथ डिज़ाइन के लिए)
+    rich_body = (
+        f"<blockquote>{safe_text}</blockquote><br><br>"
+        f'<tg-button-row align="center">'
+        f'<tg-button type="url" style="primary" url="https://t.me/{app.username}?startgroup=true">Add Me To Your Group</tg-button>'
+        f'</tg-button-row>'
+        f'<tg-button-row align="center">'
+        f'<tg-button type="callback_data" style="success" data="settings_help">Help</tg-button>'
+        f'<tg-button type="url" style="danger" url="https://t.me/MGB_CODER">SOURCE</tg-button>'
+        f'<tg-button type="callback_data" style="primary" data="settings_lang">LANGS</tg-button>'
+        f'</tg-button-row>'
+        f'<tg-button-row align="center">'
+        f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">Support</tg-button>'
+        f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">Channel</tg-button>'
+        f'</tg-button-row>'
+    )
 
-        timeout = aiohttp.ClientTimeout(total=30, connect=8)
-        session = _get_session()
-        async with session.post(url, data=form, timeout=timeout) as resp:
-            data = await resp.json()
-        if data.get("ok"):
-            res = data["result"]
-            return {"chat_id": res["chat"]["id"], "message_id": res["message_id"]}
-        logger.warning(f"Start colored send failed: {data.get('description')}")
+    # Rich Message का JSON डेटा
+    rich_message = {
+        "html": f'<img src="tg://photo?id=player_cover"/><br>{rich_body}',
+        "media": [{
+            "id": "player_cover",
+            "media": {"type": "photo", "media": photo_url}
+        }]
+    }
+
+    data = {
+        "chat_id": chat_id,
+        "rich_message": rich_message
+    }
+
+    url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendRichMessage"
+    try:
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, json=data) as resp:
+                result = await resp.json()
+                if result.get("ok"):
+                    return result["result"]
+                else:
+                    logger.warning(f"Rich Message Start failed: {result}")
     except Exception as e:
-        logger.warning(f"Start colored send error: {e}")
+        logger.warning(f"Rich Message Start error: {e}")
     return None
+
 
 # ----------------------------------------------------------
 # ✨ ANIMATION CONFIGURATION ✨
@@ -90,7 +107,6 @@ async def _loading_animation(message: types.Message):
 @app.on_message(filters.command(["start"]))
 @lang.language()
 async def start(_, message: types.Message):
-    """Handle /start command with Colorful Buttons and Effects!"""
     if message.chat.type != enums.ChatType.PRIVATE:
         try:
             await message.delete()
@@ -103,59 +119,28 @@ async def start(_, message: types.Message):
     private = message.chat.type == enums.ChatType.PRIVATE
 
     if private:
-        # 1. Show Loading Animation
         await _loading_animation(message)
 
-    # 2. Text Preparation
     _text = (
         message.lang["start_pm"].format(message.from_user.first_name, app.name)
         if private
         else message.lang["start_gp"].format(app.name)
     )
 
-    # 3. Colorful Buttons Setup (Direct JSON format for Telegram API)
-    # Change the URLs and Texts according to your needs.
-    colorful_buttons = [
-        [
-            {"text": "➕ Add Me To Your Group", "url": f"https://t.me/{app.username}?startgroup=true", "style": "primary"} # Blue Button
-        ],
-        [
-            {"text": "🛠 Help", "callback_data": "settings_help", "style": "success"}, # Green Button
-            {"text": "⚙️ Source", "url": "https://t.me/MGB_CODER", "style": "danger"}, # Red Button
-            {"text": "🌐 Langs", "callback_data": "settings_lang", "style": "primary"} # Blue Button
-        ],
-        [
-            {"text": "🎧 Support", "url": "https://t.me/MGB_CODER", "style": "primary"},
-            {"text": "📢 Channel", "url": "https://t.me/MGB_CODER", "style": "primary"}
-        ]
-    ]
-    
     sent_data = None
-    try:
-        if config.START_IMG and config.START_IMG.strip():
-            # Send using our custom Colored Button API
-            sent_data = await _send_start_colored(
-                chat_id=message.chat.id,
-                photo_url=config.START_IMG,
-                caption=_text,
-                buttons_list=colorful_buttons
-            )
-        else:
-            raise ValueError("No Photo provided in START_IMG")
-    except Exception:
-        # Fallback to normal Pyrogram if image fails
-        key = buttons.start_key(message.lang, private)
-        try:
-            sent_msg = await message.reply_text(text=_text, reply_markup=key)
-            sent_data = {"chat_id": sent_msg.chat.id, "message_id": sent_msg.id}
-        except Exception:
-            pass
-
+    if config.START_IMG and config.START_IMG.strip():
+        # Call the new Smart Rich Message API
+        sent_data = await _send_rich_start(
+            chat_id=message.chat.id,
+            photo_url=config.START_IMG,
+            text=_text
+        )
+    
     # 4. Final Reaction Effect (❤️‍🔥)
     if private and sent_data:
         try:
             await app.send_reaction(
-                chat_id=sent_data["chat_id"],
+                chat_id=message.chat.id,
                 message_id=sent_data["message_id"],
                 emoji="❤️‍🔥",
             )
@@ -167,3 +152,4 @@ async def start(_, message: types.Message):
             return
         await utils.send_log(message)
         return await db.add_user(message.from_user.id)
+        
