@@ -1,19 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
-# ==========================================================
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Plugin   : /deleteall - wipe the group's message history
-# Location : ArtistMusic/Artistbots/del_msg.py
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-#   Only the group owner (or a sudoer) can confirm. The assistant account is
-#   invited, given "delete messages", clears the history, then is demoted and
-#   leaves. Falls back to batch deletion if clearing in one go is not allowed.
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 import asyncio
 
