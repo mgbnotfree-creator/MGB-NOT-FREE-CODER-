@@ -220,7 +220,6 @@ class Utilities:
         *,
         reply_markup=None,
         quote: bool | None = True,
-        **kwargs,
     ) -> types.Message | None:
         """Send text but gracefully fallback to media-only chats."""
         if not message:
@@ -231,7 +230,6 @@ class Utilities:
                 text=text,
                 reply_markup=reply_markup,
                 quote=bool(quote),
-                **kwargs,
             )
         except (errors.ChatSendPlainForbidden, errors.ChatWriteForbidden):
             fallback_photo = getattr(config, "START_IMG", None)
@@ -244,7 +242,6 @@ class Utilities:
                     caption=text,
                     reply_markup=reply_markup,
                     quote=bool(quote),
-                    **kwargs,
                 )
             except errors.RPCError:
                 return None
@@ -269,4 +266,3 @@ class Utilities:
             return True
         except errors.RPCError:
             return False
-        
