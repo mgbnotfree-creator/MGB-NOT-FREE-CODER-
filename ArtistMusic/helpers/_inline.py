@@ -88,26 +88,21 @@ class Inline:
             )
         ]])
 
-    # 🚀 NEW SMART HTML PLAYER CONTROLS
+    # 🚀 1. NEW SMART HTML PLAYER CONTROLS (कलरफुल टाइमर और HTML वाले बटन)
     def controls_html(
         self, chat_id: int, played_sec: int = 0, duration_sec: int = 0, playing: bool = True
     ) -> str:
-        """
-        यह आपका नया HTML प्लेयर कंट्रोल है!
-        इसे Pyrogram के reply_markup की जगह sendRichMessage API में भेजा जाएगा।
-        """
+        """यह आपका नया HTML प्लेयर कंट्रोल है!"""
         time_style, replay_style, state_style, queue_style = _styles(playing)
-        
         state = "pause" if playing else "resume"
         label = "II Pause" if playing else "▷ Resume"
-        
         p = progress_text(played_sec, duration_sec)
-
+        
         from ArtistMusic import db
         ap_on = chat_id in db.autoplay_on
         ap_label = "AUTOPLAY : ON" if ap_on else "AUTOPLAY : OFF"
         ap_style = "success" if ap_on else "primary"
-
+        
         return (
             f'<tg-button-row align="center">'
             f'<tg-button type="callback_data" style="{time_style}" data="controls status {chat_id}">{p}</tg-button>'
@@ -123,6 +118,33 @@ class Inline:
             f'<tg-button type="callback_data" style="danger" data="controls close {chat_id}">• CLOSE •</tg-button>'
             f'</tg-button-row>'
         )
+
+    # 🛑 2. OLD NORMAL CONTROLS (बॉट को क्रैश होने से बचाने के लिए बैकअप)
+    def controls(
+        self, chat_id: int, status: str = None, timer: str = None, remove: bool = False,
+    ) -> types.InlineKeyboardMarkup:
+        """यह पुराना नॉर्मल प्लेयर कंट्रोल है जो बॉट को क्रैश होने से बचाएगा।"""
+        keyboard = []
+        if status:
+            keyboard.append([self.ikb(text=f"{status}", callback_data=f"controls status {chat_id}", style=ButtonStyle.PRIMARY)])
+        elif timer:
+            keyboard.append([self.ikb(text=f"{timer}", callback_data=f"controls status {chat_id}", style=ButtonStyle.PRIMARY)])
+        if not remove:
+            keyboard.append([
+                self.ikb(text="II", callback_data=f"controls pause {chat_id}", style=ButtonStyle.PRIMARY),
+                self.ikb(text="▷", callback_data=f"controls resume {chat_id}", style=ButtonStyle.PRIMARY),
+                self.ikb(text="↻", callback_data=f"controls replay {chat_id}", style=ButtonStyle.PRIMARY),
+                self.ikb(text="⚠︎", callback_data=f"controls skip {chat_id}", style=ButtonStyle.PRIMARY),
+                self.ikb(text="▢", callback_data=f"controls stop {chat_id}", style=ButtonStyle.PRIMARY),
+            ])
+            from ArtistMusic import db
+            ap_on = chat_id in db.autoplay_on
+            keyboard.append([
+                self.ikb(text="AUTOPLAY : ON" if ap_on else "AUTOPLAY : OFF", callback_data=f"controls autoplay {chat_id}", style=ButtonStyle.SUCCESS),
+                self.ikb(text="• CLOSE •", callback_data=f"controls close {chat_id}", style=ButtonStyle.DANGER),
+            ])
+        return self.ikm(keyboard)
+
 
     def help_markup(
         self, _lang: dict, back: bool = False
