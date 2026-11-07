@@ -1,10 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
-# Channel : https://t.me/artistbots
+# Copyright (c) 2026 MGB NOT FREE CODER
+# All Rights Reserved.
 #
-# Message pools used by tagall.py (gm / gn / hi / quotes / shayari)
-# NOTE: this is a data module - it has no handlers.
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
+#
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
+#
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 GM_MESSAGES = [ "**➠ ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ, ᴋᴇsᴇ ʜᴏ 🐱**",
          "**➠ ɢᴍ, sᴜʙʜᴀ ʜᴏ ɢʏɪ ᴜᴛʜɴᴀ ɴᴀʜɪ ʜᴀɪ ᴋʏᴀ 🌤️**",
