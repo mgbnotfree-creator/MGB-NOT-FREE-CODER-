@@ -1,17 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
-# ==========================================================
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Plugin   : /info /userinfo /whois
-# Location : ArtistMusic/Artistbots/info.py
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-#   Reply to someone, pass @username / user-ID, or use it alone for yourself.
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 from pyrogram import enums, filters
 from pyrogram.types import Message
