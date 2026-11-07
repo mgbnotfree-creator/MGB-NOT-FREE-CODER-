@@ -1,23 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Plugin       : VC Log  (who joined / who left the voice chat)
-# Location     : ArtistMusic/Artistbots/vclog.py
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-# What it does:
-#   While the assistant is in a group's voice chat, the bot announces in
-#   the group every time someone JOINS, LEAVES or is REMOVED from the VC.
-#
-# Command (group admins & sudoers):
-#   /vclog [on|off]   - turn the notifications on / off (default: ON)
-#
-# Hooked from core/calls.py (UpdatedGroupCallParticipant update).
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 import asyncio
 import time
