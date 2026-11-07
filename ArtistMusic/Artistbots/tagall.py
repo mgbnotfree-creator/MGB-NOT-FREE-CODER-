@@ -1,23 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
-# All Rights Reserved. 
+# Copyright (c) 2026 MGB NOT FREE CODER
+# All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Plugin       : Tag members  (utag / all / mention / tagall + fun tags)
-# Location     : ArtistMusic/Artistbots/tagall.py
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-# Commands (group admins & sudoers only):
-#   /tagall | /all | @all | /utag | /mention [text]
-#                                    - ONE command: tag everyone, 6 emojis per message,
-#                                      every emoji is a hidden mention of one member
-#   /gmtag /gntag /hitag /lifetag /shayari
-#                                    - tag one member per message with a random line
-#   /ustop /tagstop /tagoff /gmstop /gnstop /histop /lifestop /shayarioff
-#                                    - stop the running tag session
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 import asyncio
 import html
