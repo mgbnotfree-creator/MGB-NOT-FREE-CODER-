@@ -36,6 +36,7 @@ async def _help(_, m: types.Message):
             caption=m.lang["help_menu"],
             reply_markup=buttons.help_markup(m.lang),
             quote=True,
+            effect_id="5170166362592510656"  # 👏 Clapping Effect (तालियां)
         )
     except Exception:
         await utils.reply(
@@ -43,6 +44,7 @@ async def _help(_, m: types.Message):
             text=m.lang["help_menu"],
             reply_markup=buttons.help_markup(m.lang),
             quote=True,
+            effect_id="5170166362592510656"  # 👏 Clapping Effect (तालियां)
         )
 
 
@@ -81,6 +83,7 @@ async def start(_, message: types.Message):
             caption=_text,
             reply_markup=key,
             quote=not private,
+            effect_id="5170169077011841524"  # 🥰 Smiling Hearts Effect (प्यार भरा चेहरा)
         )
     except errors.ChatSendPhotosForbidden:
         try:
@@ -89,6 +92,7 @@ async def start(_, message: types.Message):
                 text=_text,
                 reply_markup=key,
                 quote=not private,
+                effect_id="5170169077011841524"  # 🥰 Smiling Hearts Effect
             )
         except Exception:
             pass
@@ -121,6 +125,7 @@ async def settings(_, message: types.Message):
             message.lang, admin_only, force_admin, _language, message.chat.id
         ),
         quote=True,
+        effect_id="5159385139981059251"  # ❤️ Heart Effect (दिल)
     )
 
 
@@ -136,5 +141,4 @@ async def _new_member(_, message: types.Message):
             if await db.is_chat(message.chat.id):
                 return
             await db.add_chat(message.chat.id)
-        
-Check
+                
