@@ -9,10 +9,42 @@
 # Bot          : @Yasmeen_api_bot
 # Channel      : https://t.me/MGB_CODER
 # ==========================================================
+
+import time
 from pyrogram import types
 from pyrogram.enums import ButtonStyle
 
 from ArtistMusic import app, config, lang
+
+# ---------------------------------------------------------
+# 🎨 SMART DYNAMIC COLORS & TIMER (VelocityBots Style)
+# ---------------------------------------------------------
+
+def _time_format(sec: int, duration: int) -> str:
+    sec = max(0, int(sec or 0))
+    return time.strftime("%H:%M:%S" if duration >= 3600 else "%M:%S", time.gmtime(sec))
+
+def progress_text(played_sec: int, duration_sec: int) -> str:
+    """लाइव टाइमर और लोडिंग बार बनाता है (जैसे 01:20 ━━●━━━ 04:30)"""
+    if duration_sec <= 0:
+        return "LIVE"
+    played = max(0, min(played_sec, duration_sec))
+    n = 14
+    filled = int(round(n * played / duration_sec))
+    bar = "━" * filled + "●" + "━" * (n - filled)
+    return f"{_time_format(played, duration_sec)} {bar} {_time_format(duration_sec, duration_sec)}"
+
+def _styles(playing: bool):
+    """हर 5 सेकंड में बटन्स का रंग घुमाता है!"""
+    phase = int(time.time() // 5) % 4 if playing else 0
+    palettes = (
+        ("success", "primary", "danger", "success"),
+        ("primary", "success", "success", "danger"),
+        ("danger", "primary", "success", "primary"),
+        ("success", "danger", "primary", "success"),
+    )
+    return palettes[phase]
+
 
 # ---------------------------------------------------------
 # HELP MENU: 21 buttons (merged groups)
@@ -56,60 +88,41 @@ class Inline:
             )
         ]])
 
-    def controls(
-        self,
-        chat_id: int,
-        status: str = None,
-        timer: str = None,
-        remove: bool = False,
-    ) -> types.InlineKeyboardMarkup:
-        keyboard = []
+    # 🚀 NEW SMART HTML PLAYER CONTROLS
+    def controls_html(
+        self, chat_id: int, played_sec: int = 0, duration_sec: int = 0, playing: bool = True
+    ) -> str:
+        """
+        यह आपका नया HTML प्लेयर कंट्रोल है!
+        इसे Pyrogram के reply_markup की जगह sendRichMessage API में भेजा जाएगा।
+        """
+        time_style, replay_style, state_style, queue_style = _styles(playing)
+        
+        state = "pause" if playing else "resume"
+        label = "II Pause" if playing else "▷ Resume"
+        
+        p = progress_text(played_sec, duration_sec)
 
-        if status:
-            keyboard.append(
-                [self.ikb(
-                    text=f"{status}",
-                    callback_data=f"controls status {chat_id}",
-                    style=ButtonStyle.PRIMARY,
-                )]
-            )
-        elif timer:
-            keyboard.append(
-                [self.ikb(
-                    text=f"{timer}",
-                    callback_data=f"controls status {chat_id}",
-                    style=ButtonStyle.PRIMARY,
-                )]
-            )
+        from ArtistMusic import db
+        ap_on = chat_id in db.autoplay_on
+        ap_label = "AUTOPLAY : ON" if ap_on else "AUTOPLAY : OFF"
+        ap_style = "success" if ap_on else "primary"
 
-        if not remove:
-            keyboard.append(
-                [
-                    self.ikb(text="II",  callback_data=f"controls pause {chat_id}",  style=ButtonStyle.PRIMARY),
-                    self.ikb(text="▷",   callback_data=f"controls resume {chat_id}", style=ButtonStyle.PRIMARY),
-                    self.ikb(text="↻",   callback_data=f"controls replay {chat_id}", style=ButtonStyle.PRIMARY),
-                    self.ikb(text="⚠︎",  callback_data=f"controls skip {chat_id}",   style=ButtonStyle.PRIMARY),
-                    self.ikb(text="▢",   callback_data=f"controls stop {chat_id}",   style=ButtonStyle.PRIMARY),
-                ]
-            )
-            from ArtistMusic import db
-            ap_on = chat_id in db.autoplay_on
-            keyboard.append(
-                [
-                    self.ikb(
-                        text="AUTOPLAY : ON" if ap_on else "AUTOPLAY : OFF",
-                        callback_data=f"controls autoplay {chat_id}",
-                        style=ButtonStyle.SUCCESS,
-                    ),
-                    self.ikb(
-                        text="• CLOSE •",
-                        callback_data=f"controls close {chat_id}",
-                        style=ButtonStyle.DANGER,
-                    ),
-                ]
-            )
-
-        return self.ikm(keyboard)
+        return (
+            f'<tg-button-row align="center">'
+            f'<tg-button type="callback_data" style="{time_style}" data="controls status {chat_id}">{p}</tg-button>'
+            f'</tg-button-row>'
+            f'<tg-button-row align="center">'
+            f'<tg-button type="callback_data" style="{state_style}" data="controls {state} {chat_id}">{label}</tg-button>'
+            f'<tg-button type="callback_data" style="{time_style}" data="controls replay {chat_id}">↻ Replay</tg-button>'
+            f'<tg-button type="callback_data" style="{replay_style}" data="controls skip {chat_id}">⚠︎ Skip</tg-button>'
+            f'<tg-button type="callback_data" style="{queue_style}" data="controls stop {chat_id}">▢ Stop</tg-button>'
+            f'</tg-button-row>'
+            f'<tg-button-row align="center">'
+            f'<tg-button type="callback_data" style="{ap_style}" data="controls autoplay {chat_id}">{ap_label}</tg-button>'
+            f'<tg-button type="callback_data" style="danger" data="controls close {chat_id}">• CLOSE •</tg-button>'
+            f'</tg-button-row>'
+        )
 
     def help_markup(
         self, _lang: dict, back: bool = False
