@@ -4,85 +4,55 @@
 #
 # Project      : MGB API Telegram Music Bot
 # Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
+#
 # Bot          : @Yasmeen_api_bot
 # Channel      : https://t.me/MGB_CODER
+#
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
 
 import asyncio
-import aiohttp
 import random
-import json
-import html
-from pyrogram import enums, filters, types
+from pyrogram import enums, errors, filters, types
 
 from ArtistMusic import app, config, db, lang, logger
-from ArtistMusic.helpers import utils
+from ArtistMusic.helpers import buttons, utils
 
 # ----------------------------------------------------------
-# 🎨 SMART RICH MESSAGE API (LIKE VELOCITYBOTS) 🎨
+# ✨ ANIMATION & EFFECT CONFIGURATION ✨
 # ----------------------------------------------------------
+RAIN_EMOJIS = ["❤️", "🔥", "🥰", "❤️‍🔥", "💥", "🤩", "⚡️", "💯", "✨", "🏆"]
 
-async def _send_rich_start(chat_id: int, photo_url: str, text: str):
-    """Sends start message using the undocumented sendRichMessage API with <tg-button> HTML"""
-    if not config.BOT_TOKEN:
-        return None
-
-    # Text को HTML Format में बदलना
-    safe_text = text.replace('\n', '<br>')
-    
-    # 🎨 HTML BUTTONS (100% Working Help Button via Deep-Link URL)
-    rich_body = (
-        f"<blockquote>{safe_text}</blockquote><br><br>"
-        f'<tg-button-row align="center">'
-        f'<tg-button type="url" style="primary" url="https://t.me/{app.username}?startgroup=true">ㅤㅤAᴅᴅ Mᴇ Tᴏ Yᴏᴜʀ Gʀᴏᴜᴘㅤㅤ</tg-button>'
-        f'</tg-button-row>'
-        f'<tg-button-row align="center">'
-        f'<tg-button type="url" style="success" url="https://t.me/{app.username}?start=help">ㅤㅤHᴇʟᴘㅤㅤ</tg-button>'
-        f'</tg-button-row>'
-        f'<tg-button-row align="center">'
-        f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">ㅤSᴜᴘᴘᴏʀᴛㅤ</tg-button>'
-        f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">ㅤCʜᴀɴɴᴇʟㅤ</tg-button>'
-        f'</tg-button-row>'
-    )
-
-    # Rich Message का JSON डेटा
-    rich_message = {
-        "html": f'<img src="tg://photo?id=player_cover"/><br>{rich_body}',
-        "media": [{
-            "id": "player_cover",
-            "media": {"type": "photo", "media": photo_url}
-        }]
-    }
-
-    data = {
-        "chat_id": chat_id,
-        "rich_message": rich_message
-    }
-
-    url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendRichMessage"
-    try:
-        timeout = aiohttp.ClientTimeout(total=30)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(url, json=data) as resp:
-                result = await resp.json()
-                if result.get("ok"):
-                    return result["result"]
-                else:
-                    logger.warning(f"Rich Message Start failed: {result}")
-    except Exception as e:
-        logger.warning(f"Rich Message Start error: {e}")
-    return None
-
-
-# ----------------------------------------------------------
-# ✨ ANIMATION CONFIGURATION ✨
-# ----------------------------------------------------------
 _LOAD_FRAMES = [
     "⏳ <b>लोड़ हो रहा है...</b>\n<blockquote>⚡ MGB NOT FREE CODER ⚡</blockquote>\n<code>■□□□□□□□□□</code>",
     "⌛ <b>डेटा कनेक्ट कर रहा है...</b>\n<blockquote>⚡ MGB NOT FREE CODER ⚡</blockquote>\n<code>■■■■□□□□□□</code>",
     "⏳ <b>इफ़ेक्ट्स स्टार्ट कर रहा है...</b>\n<blockquote>⚡ MGB NOT FREE CODER ⚡</blockquote>\n<code>■■■■■■■□□□</code>",
     "✨ <b>बॉट तैयार है!</b>\n<blockquote>⚡ MGB NOT FREE CODER ⚡</blockquote>\n<code>■■■■■■■■■■</code>",
 ]
+
+async def _emoji_rain(message: types.Message):
+    """Send a random big emoji reaction."""
+    emoji = random.choice(RAIN_EMOJIS)
+    try:
+        await app.send_reaction(
+            chat_id=message.chat.id,
+            message_id=message.id,
+            emoji=emoji,
+            big=True,
+        )
+    except Exception:
+        pass
+    await asyncio.sleep(1.0)
+    try:
+        await app.send_reaction(
+            chat_id=message.chat.id,
+            message_id=message.id,
+            emoji=None,
+        )
+    except Exception:
+        pass
 
 async def _loading_animation(message: types.Message):
     """Show animated loading bar."""
@@ -100,12 +70,44 @@ async def _loading_animation(message: types.Message):
         pass
 
 # ----------------------------------------------------------
-# 🤖 BOT COMMANDS 🤖
+# 🤖 BOT COMMANDS (START, HELP, SETTINGS) 🤖
 # ----------------------------------------------------------
+
+@app.on_message(filters.command(["help"]) & filters.private & ~app.bl_users)
+@lang.language()
+async def _help(_, m: types.Message):
+    """Handle /help command."""
+    try:
+        await m.delete()
+    except Exception:
+        pass
+
+    try:
+        sent = await utils.reply(
+            m,
+            photo=config.START_IMG,
+            caption=m.lang["help_menu"],
+            reply_markup=buttons.help_markup(m.lang),
+            quote=True,
+        )
+        # Send manual reaction for effect
+        if sent:
+            await app.send_reaction(m.chat.id, sent.id, "👏")
+    except Exception:
+        sent = await utils.reply(
+            m,
+            text=m.lang["help_menu"],
+            reply_markup=buttons.help_markup(m.lang),
+            quote=True,
+        )
+        if sent:
+            await app.send_reaction(m.chat.id, sent.id, "👏")
+
 
 @app.on_message(filters.command(["start"]))
 @lang.language()
 async def start(_, message: types.Message):
+    """Handle /start command with full animations!"""
     if message.chat.type != enums.ChatType.PRIVATE:
         try:
             await message.delete()
@@ -115,9 +117,18 @@ async def start(_, message: types.Message):
     if not message.from_user:
         return
 
+    if message.from_user.id in app.bl_users and message.from_user.id not in db.notified:
+        return await message.reply_text(message.lang["bl_user_notify"])
+
+    if len(message.command) > 1 and message.command[1] == "help":
+        return await _help(_, message)
+
     private = message.chat.type == enums.ChatType.PRIVATE
 
     if private:
+        # 1. Start Emoji Rain
+        await _emoji_rain(message)
+        # 2. Show Loading Animation
         await _loading_animation(message)
 
     _text = (
@@ -125,34 +136,82 @@ async def start(_, message: types.Message):
         if private
         else message.lang["start_gp"].format(app.name)
     )
-
-    sent_data = None
-    if config.START_IMG and config.START_IMG.strip():
-        # Call the new Smart Rich Message API
-        sent_data = await _send_rich_start(
-            chat_id=message.chat.id,
-            photo_url=config.START_IMG,
-            text=_text
-        )
+    key = buttons.start_key(message.lang, private)
     
-    # 🌟 FIXED: Reliable Reaction Effect on Rich Message
-    if private and sent_data and "message_id" in sent_data:
+    sent = None
+    try:
+        if config.START_IMG and config.START_IMG.strip():
+            sent = await message.reply_photo(
+                photo=config.START_IMG,
+                caption=_text,
+                reply_markup=key,
+            )
+        else:
+            raise ValueError("No Photo")
+    except Exception:
         try:
-            cool_reactions = ["❤️‍🔥", "⚡", "🔥", "🥰", "🎉", "💖", "🍓"]
-            selected_emoji = random.choice(cool_reactions)
-            
-            await asyncio.sleep(0.5)  # छोटा डिले ताकि मैसेज पूरी तरह रेंडर हो जाए
+            sent = await message.reply_text(
+                text=_text,
+                reply_markup=key,
+            )
+        except Exception:
+            pass
+
+    # 3. Final Reaction Effect on the sent image
+    if private and sent:
+        try:
             await app.send_reaction(
                 chat_id=message.chat.id,
-                message_id=sent_data["message_id"],
-                emoji=selected_emoji,
+                message_id=sent.id,
+                emoji="🥰",
             )
-        except Exception as e:
-            logger.debug(f"Reaction error: {e}")
+        except Exception:
+            pass
 
     if private:
         if await db.is_user(message.from_user.id):
             return
         await utils.send_log(message)
         return await db.add_user(message.from_user.id)
-                    
+
+
+@app.on_message(filters.command(["playmode", "settings"]) & filters.group & ~app.bl_users)
+@lang.language()
+async def settings(_, message: types.Message):
+    """Handle settings command."""
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    admin_only = await db.get_play_mode(message.chat.id)
+    force_admin = await db.get_force_mode(message.chat.id)
+    _language = "en"
+    
+    sent = await utils.safe_text(
+        message,
+        message.lang["start_settings"].format(message.chat.title),
+        reply_markup=buttons.settings_markup(
+            message.lang, admin_only, force_admin, _language, message.chat.id
+        ),
+        quote=True,
+    )
+    if sent:
+        try:
+            await app.send_reaction(message.chat.id, sent.id, "❤️")
+        except Exception:
+            pass
+
+
+@app.on_message(filters.new_chat_members, group=7)
+@lang.language()
+async def _new_member(_, message: types.Message):
+    if message.chat.type != enums.ChatType.SUPERGROUP:
+        return await message.chat.leave()
+
+    for member in message.new_chat_members:
+        if member.id == app.id:
+            if await db.is_chat(message.chat.id):
+                return
+            await db.add_chat(message.chat.id)
+    
