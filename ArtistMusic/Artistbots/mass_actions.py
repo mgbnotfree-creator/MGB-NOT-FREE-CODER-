@@ -1,22 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
-# ==========================================================
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Plugin   : Mass group actions (owner / sudo only, Yes/No confirmation)
-# Location : ArtistMusic/Artistbots/mass_actions.py
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-#   /kickall   - kick every non-admin member
-#   /banall    - ban every non-admin member
-#   /unbanall  - unban everyone in the ban list
-#   /muteall   - mute every non-admin member
-#   /unmuteall - lift the mute of every non-admin member
-#   /unpinall  - unpin all pinned messages
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 import asyncio
 
