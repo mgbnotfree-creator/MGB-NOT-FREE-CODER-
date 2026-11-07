@@ -1,6 +1,6 @@
 # ==========================================================
 # Copyright (c) 2026 ArtistBots
-# Channel : https://t.me/artistbots
+# Channel : https://t.me/MGB_CODER
 # ==========================================================
 from pathlib import Path
 
