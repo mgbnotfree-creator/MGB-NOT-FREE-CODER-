@@ -8,9 +8,7 @@
 #
 # Bot          : @Yasmeen_api_bot
 # Channel      : https://t.me/MGB_CODER
-#
-# Unauthorized copying, modification, or redistribution
-# of this source code without permission is prohibited.
+# Part 1 of 2
 # ==========================================================
 
 import asyncio
@@ -18,7 +16,6 @@ import logging
 import aiohttp
 from ntgcalls import ConnectionNotFound, TelegramServerError
 from pyrogram import enums, errors
-from pyrogram.errors import MessageIdInvalid
 from pyrogram.types import InputMediaPhoto, Message
 from pytgcalls import PyTgCalls, exceptions, types
 from pytgcalls.pytgcalls_session import PyTgCallsSession
@@ -27,7 +24,6 @@ from ArtistMusic import app, config, db, lang, logger, preload, queue, userbot, 
 from ArtistMusic.core.autoplay import autoplay
 from ArtistMusic.helpers import Media, Track, buttons, thumb, utils
 
-# Suppress pytgcalls harmless errors (library bugs - not critical)
 class PyTgCallsErrorFilter(logging.Filter):
     def filter(self, record):
         if 'UpdateGroupCall' in record.getMessage():
@@ -44,32 +40,6 @@ class TgCall(PyTgCalls):
         self._play_next_locks = {}  
         self._stream_end_cache = {}  
 
-    async def _edit_media_with_retry(self, message: Message, media_obj: InputMediaPhoto, reply_markup):
-        try:
-            return await message.edit_media(media=media_obj, reply_markup=reply_markup)
-        except errors.FloodWait as fw:
-            await asyncio.sleep(fw.value + 1)
-            try:
-                return await message.edit_media(media=media_obj, reply_markup=reply_markup)
-            except Exception:
-                return None
-        except errors.MessageNotModified:
-            return None
-        except Exception:
-            return None
-
-    async def _send_photo_with_retry(self, chat_id: int, photo, caption: str, reply_markup):
-        try:
-            return await utils.send_media(chat_id=chat_id, media=photo, caption=caption, reply_markup=reply_markup)
-        except errors.FloodWait as fw:
-            await asyncio.sleep(fw.value + 1)
-            try:
-                return await utils.send_media(chat_id=chat_id, media=photo, caption=caption, reply_markup=reply_markup)
-            except Exception:
-                return None
-        except Exception:
-            return None
-
     async def pause(self, chat_id: int) -> bool:
         client = await db.get_assistant(chat_id)
         try:
@@ -81,7 +51,7 @@ class TgCall(PyTgCalls):
             await db.remove_call(chat_id)
             queue.clear(chat_id)
             return False
-        except Exception as e:
+        except Exception:
             await db.playing(chat_id, paused=False)
             return False
 
@@ -96,7 +66,7 @@ class TgCall(PyTgCalls):
             await db.remove_call(chat_id)
             queue.clear(chat_id)
             return False
-        except Exception as e:
+        except Exception:
             return False
 
     async def stop(self, chat_id: int) -> None:
@@ -113,8 +83,6 @@ class TgCall(PyTgCalls):
         try:
             await client.leave_call(chat_id, close=False)
             await asyncio.sleep(0.5)
-        except (ConnectionNotFound, exceptions.NotInCallError):
-            pass
         except Exception:
             pass
 
@@ -191,12 +159,6 @@ class TgCall(PyTgCalls):
             ffmpeg_parameters=ffmpeg_params,
         )
 
-        try:
-            call = await client.get_call(chat_id)
-            if call:
-                await client.leave_call(chat_id, close=False)
-        except (ConnectionNotFound, exceptions.NotInCallError):
-            pass
         max_retries = 3
         retry_delay = 1
 
@@ -249,9 +211,6 @@ class TgCall(PyTgCalls):
                     except Exception:
                         pass
 
-                # -------------------------------------------------------------
-                # 🎨 VELOCITYBOTS STYLE RICH PLAYER (BLUE LINES & HTML BUTTONS)
-                # -------------------------------------------------------------
                 safe_title = str(media.title).replace('\n', ' ')
                 safe_user = str(media.user).replace('\n', ' ')
                 duration_sec = media.duration_sec if not media.is_live else 0
@@ -296,7 +255,6 @@ class TgCall(PyTgCalls):
                                 sent_photo = MockMessage(result["result"]["message_id"])
                 except Exception:
                     pass
-                # -------------------------------------------------------------
 
                 if sent_photo:
                     media.message_id = sent_photo.id
@@ -304,78 +262,78 @@ class TgCall(PyTgCalls):
                     asyncio.create_task(preload.start_preload(chat_id))
                 except Exception:
                     pass
-        except FileNotFoundError:
-            if message:
-                try:
-                    await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
-                except Exception:
-                    pass
-            await self.play_next(chat_id)
-        except exceptions.NoActiveGroupCall:
-            await self.stop(chat_id)
-            if message:
-                try:
-                    await message.edit_text(_lang["error_vc_disabled"])
-                except Exception:
-                    pass
-        except errors.RPCError as e:
-            error_str = str(e)
-            if any(x in error_str for x in ["CHAT_ADMIN_REQUIRED", "phone.CreateGroupCall", "GROUPCALL_FORBIDDEN", "GROUPCALL_CREATE_FORBIDDEN", "VOICE_MESSAGES_FORBIDDEN"]):
-                await self.stop(chat_id)
-                if message:
-                    try:
-                        await message.edit_text(_lang["error_vc_disabled"])
-                    except Exception:
-                        pass
-            elif "GROUPCALL_INVALID" in error_str or "GROUPCALL" in error_str:
-                await self.stop(chat_id)
-                if message:
-                    try:
-                        await message.edit_text(_lang["error_no_call"])
-                    except Exception:
-                        pass
-            else:
-                await self.stop(chat_id)
-        except exceptions.NoAudioSourceFound:
-            media_id = getattr(media, "id", None)
-            if _retry and not getattr(media, "is_live", False) and yt.is_yt_id(media_id):
-                is_vid = getattr(media, "video", False)
-                try:
-                    await yt.purge_bad_download(media_id, video=is_vid, force=True)
-                    media.file_path = await yt.download(media_id, video=is_vid)
-                except Exception:
-                    media.file_path = None
-                if media.file_path:
-                    return await self.play_media(chat_id, message, media, seek_time=seek_time, message_chat_id=message_chat_id, _retry=False)
-            if message:
-                try:
-                    await message.edit_text(_lang["error_no_audio"])
-                except Exception:
-                    pass
-            await self.play_next(chat_id)
-        except (ConnectionNotFound, TelegramServerError):
-            await self.stop(chat_id)
-            if message:
-                try:
-                    await message.edit_text(_lang["error_tg_server"])
-                except Exception:
-                    pass
-        except TimeoutError:
-            await self.stop(chat_id)
-            if message:
-                try:
-                    await message.edit_text("⏱️ <b>Connection timed out!</b>\n\n<blockquote>Failed to join voice chat. Please check your network and try again.</blockquote>")
-                except Exception:
-                    pass
-            await asyncio.sleep(2)
-            await self.play_next(chat_id)
-        except Exception as e:
-            await self.stop(chat_id)
-            if message:
-                try:
-                    await message.edit_text(f"❌ Playback error: {str(e)[:100]}")
-                except Exception:
-                    pass
+                except FileNotFoundError:
+                    if message:
+                        try:
+                            await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
+                        except Exception:
+                            pass
+                    await self.play_next(chat_id)
+                except exceptions.NoActiveGroupCall:
+                    await self.stop(chat_id)
+                    if message:
+                        try:
+                            await message.edit_text(_lang["error_vc_disabled"])
+                        except Exception:
+                            pass
+                except errors.RPCError as e:
+                    error_str = str(e)
+                    if any(x in error_str for x in ["CHAT_ADMIN_REQUIRED", "phone.CreateGroupCall", "GROUPCALL_FORBIDDEN", "GROUPCALL_CREATE_FORBIDDEN", "VOICE_MESSAGES_FORBIDDEN"]):
+                        await self.stop(chat_id)
+                        if message:
+                            try:
+                                await message.edit_text(_lang["error_vc_disabled"])
+                            except Exception:
+                                pass
+                    elif "GROUPCALL_INVALID" in error_str or "GROUPCALL" in error_str:
+                        await self.stop(chat_id)
+                        if message:
+                            try:
+                                await message.edit_text(_lang["error_no_call"])
+                            except Exception:
+                                pass
+                    else:
+                        await self.stop(chat_id)
+                except exceptions.NoAudioSourceFound:
+                    media_id = getattr(media, "id", None)
+                    if _retry and not getattr(media, "is_live", False) and yt.is_yt_id(media_id):
+                        is_vid = getattr(media, "video", False)
+                        try:
+                            await yt.purge_bad_download(media_id, video=is_vid, force=True)
+                            media.file_path = await yt.download(media_id, video=is_vid)
+                        except Exception:
+                            media.file_path = None
+                        if media.file_path:
+                            return await self.play_media(chat_id, message, media, seek_time=seek_time, message_chat_id=message_chat_id, _retry=False)
+                    if message:
+                        try:
+                            await message.edit_text(_lang["error_no_audio"])
+                        except Exception:
+                            pass
+                    await self.play_next(chat_id)
+                except (ConnectionNotFound, TelegramServerError):
+                    await self.stop(chat_id)
+                    if message:
+                        try:
+                            await message.edit_text(_lang["error_tg_server"])
+                        except Exception:
+                            pass
+                except TimeoutError:
+                    await self.stop(chat_id)
+                    if message:
+                        try:
+                            await message.edit_text("⏱️ <b>Connection timed out!</b>\n\n<blockquote>Failed to join voice chat. Please check your network and try again.</blockquote>")
+                        except Exception:
+                            pass
+                    await asyncio.sleep(2)
+                    await self.play_next(chat_id)
+                except Exception as e:
+                    await self.stop(chat_id)
+                    if message:
+                        try:
+                            await message.edit_text(f"❌ Playback error: {str(e)[:100]}")
+                        except Exception:
+                            pass
 
     async def replay(self, chat_id: int) -> None:
         try:
@@ -638,4 +596,3 @@ class TgCall(PyTgCalls):
             self.clients.append(client)
             await self.decorators(client)
                 
-            
