@@ -266,3 +266,4 @@ class Utilities:
             return True
         except errors.RPCError:
             return False
+            
