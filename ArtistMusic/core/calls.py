@@ -269,7 +269,7 @@ class TgCall(PyTgCalls):
                     asyncio.create_task(preload.start_preload(chat_id))
                 except Exception:
                     pass
-                            except FileNotFoundError:
+        except FileNotFoundError:
             if message:
                 try:
                     await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
@@ -602,4 +602,4 @@ class TgCall(PyTgCalls):
             await client.start()
             self.clients.append(client)
             await self.decorators(client)
-                   
+            
