@@ -1,18 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
-# ==========================================================
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Plugin   : Promote / demote
-# Location : ArtistMusic/Artistbots/promote.py
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-#   /promote /fullpromote /demote /tempadmin  (reply, @username or user-ID)
-#   Time format for /tempadmin: 30m, 2h, 1d   (auto-demote when it ends)
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 import asyncio
 from typing import Optional
