@@ -1,20 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
-# ==========================================================
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Multi-font text renderer for the welcome card.
-# NOT a plugin - it has no handlers.
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-# People write their names in every style imaginable (𝓕𝓪𝓷𝓬𝔂, ʟɪᴋᴇ ᴛʜɪs, हिंदी,
-# العربية, 한국어, 中文, ꧁༒☬ symbols ☬༒꧂, emoji 😎 ...). A single font cannot
-# draw all of that, so every character is drawn with the first bundled font
-# that actually contains it.
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 import unicodedata
 from functools import lru_cache
