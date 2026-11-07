@@ -12,15 +12,31 @@
 # Unauthorized copying, modification, or redistribution
 # of this source code without permission is prohibited.
 # ==========================================================
-aiohttp~=3.13.2
-kurigram~=2.2.17
-pillow~=12.0.0
-fonttools>=4.50.0
-psutil~=7.2.1
-pymongo~=4.15.5
-pytgcrypto~=1.2.11
-py-tgcalls~=2.2.8
-py-yt-search~=0.5.5
-python-dotenv~=1.2.1
-yt-dlp[default]>=2026.3.3
-imageio-ffmpeg
+Aiofiles
+aiohttp
+asyncio
+beautifulsoup4
+dnspython
+ffmpeg-python
+gitpython
+hachoir
+heroku3
+httpx[http2]
+kurigram>=2.2.26
+motor
+pillow
+psutil
+py-tgcalls==0.9.7
+pykeyboard
+python-dotenv
+pyyaml
+requests
+speedtest-cli
+spotipy
+tgcrypto
+uvloop==0.21.0; sys_platform != "win32"
+unidecode
+yt-dlp
+youtube-search
+youtube-search-python
+py-yt-search
