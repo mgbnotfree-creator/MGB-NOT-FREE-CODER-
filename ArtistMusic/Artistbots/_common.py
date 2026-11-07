@@ -1,16 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
-# ==========================================================
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Shared helpers for the Artistbots group-manager plugins
-# (actions, promote, mass_actions, del_msg, assisuser, grouphandler,
-#  purge, info, zombie).  This is NOT a plugin - it has no handlers.
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
+#
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 import datetime as dt
 import html
