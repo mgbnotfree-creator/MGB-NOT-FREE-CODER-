@@ -1,23 +1,18 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
-# Channel      : https://t.me/artistbots
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
+# Type         : API Based Telegram Music Bot
 #
-# Plugin       : Sticker  (one sticker -> its own pack)
-# Location     : ArtistMusic/Artistbots/sticker.py
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
-# Command:
-#   /sticker  (reply to a sticker)
-#       -> creates a pack owned by the user with ONLY that single sticker.
-#          Pack title : "<User name> by Artistbots"
-#       If the user already has a /sticker pack of the same type, the bot
-#       asks:  add to the same pack  /  create a new pack.
-#
-# Shared helpers live in kang.py.
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
+
 
 import secrets
 import time
