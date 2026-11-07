@@ -29,20 +29,18 @@ async def _send_rich_start(chat_id: int, photo_url: str, text: str):
     # Text को HTML Format में बदलना
     safe_text = text.replace('\n', '<br>')
     
-    # 🎨 HTML BUTTONS (गोल और स्मूथ डिज़ाइन के लिए)
+    # 🎨 HTML BUTTONS (बिना SOURCE और LANGS के, स्टाइलिश टेक्स्ट और परफ़ेक्ट स्पेसिंग)
     rich_body = (
         f"<blockquote>{safe_text}</blockquote><br><br>"
         f'<tg-button-row align="center">'
-        f'<tg-button type="url" style="primary" url="https://t.me/{app.username}?startgroup=true">Add Me To Your Group</tg-button>'
+        f'<tg-button type="url" style="primary" url="https://t.me/{app.username}?startgroup=true">ㅤㅤAᴅᴅ Mᴇ Tᴏ Yᴏᴜʀ Gʀᴏᴜᴘㅤㅤ</tg-button>'
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
-        f'<tg-button type="callback_data" style="success" data="settings_help">Help</tg-button>'
-        f'<tg-button type="url" style="danger" url="https://t.me/MGB_CODER">SOURCE</tg-button>'
-        f'<tg-button type="callback_data" style="primary" data="settings_lang">LANGS</tg-button>'
+        f'<tg-button type="callback_data" style="success" data="settings_help">ㅤㅤHᴇʟᴘㅤㅤ</tg-button>'
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
-        f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">Support</tg-button>'
-        f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">Channel</tg-button>'
+        f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">ㅤSᴜᴘᴘᴏʀᴛㅤ</tg-button>'
+        f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">ㅤCʜᴀɴɴᴇʟㅤ</tg-button>'
         f'</tg-button-row>'
     )
 
@@ -152,4 +150,3 @@ async def start(_, message: types.Message):
             return
         await utils.send_log(message)
         return await db.add_user(message.from_user.id)
-        
