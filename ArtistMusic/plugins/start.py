@@ -10,6 +10,7 @@
 
 import asyncio
 import aiohttp
+import random
 import json
 import html
 from pyrogram import enums, filters, types
@@ -29,14 +30,14 @@ async def _send_rich_start(chat_id: int, photo_url: str, text: str):
     # Text को HTML Format में बदलना
     safe_text = text.replace('\n', '<br>')
     
-    # 🎨 HTML BUTTONS (बिना SOURCE और LANGS के, स्टाइलिश टेक्स्ट और परफ़ेक्ट स्पेसिंग)
+    # 🎨 HTML BUTTONS (बिना SOURCE और LANGS के, 100% Working Help Button)
     rich_body = (
         f"<blockquote>{safe_text}</blockquote><br><br>"
         f'<tg-button-row align="center">'
         f'<tg-button type="url" style="primary" url="https://t.me/{app.username}?startgroup=true">ㅤㅤAᴅᴅ Mᴇ Tᴏ Yᴏᴜʀ Gʀᴏᴜᴘㅤㅤ</tg-button>'
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
-        f'<tg-button type="callback_data" style="success" data="settings_help">ㅤㅤHᴇʟᴘㅤㅤ</tg-button>'
+        f'<tg-button type="url" style="success" url="https://t.me/{app.username}?start=help">ㅤㅤHᴇʟᴘㅤㅤ</tg-button>'
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
         f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">ㅤSᴜᴘᴘᴏʀᴛㅤ</tg-button>'
@@ -134,19 +135,23 @@ async def start(_, message: types.Message):
             text=_text
         )
     
-    # 4. Final Reaction Effect (❤️‍🔥)
+    # 🌟 EXTRA RANDOM REACTION EFFECTS
     if private and sent_data:
         try:
+            cool_reactions = ["❤️‍🔥", "⚡", "🔥", "🥰", "🎉", "💖", "🍓"]
+            selected_emoji = random.choice(cool_reactions)
+            
             await app.send_reaction(
                 chat_id=message.chat.id,
                 message_id=sent_data["message_id"],
-                emoji="❤️‍🔥",
+                emoji=selected_emoji,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Reaction error: {e}")
 
     if private:
         if await db.is_user(message.from_user.id):
             return
         await utils.send_log(message)
         return await db.add_user(message.from_user.id)
+    
