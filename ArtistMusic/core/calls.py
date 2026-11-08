@@ -404,23 +404,58 @@ class TgCall(PyTgCalls):
                 media = queue.get_next(chat_id)
 
                 if not media:
-                    # 🔥 FIX: अब इंजन डायरेक्ट UI बटन के स्टेट से जुड़ा है
+                    # 🔥 100% AUTOPLAY GUARANTEE (WITH FALLBACK)
                     if current and loop_mode == 0 and self.autoplay_enabled(chat_id) and not getattr(current, "is_live", False):
+                        _autoplay_msg = None
                         try:
                             _autoplay_msg = await app.send_message(chat_id=target_chat, text="🔄 Searching Autoplay Track...")
-                            _next_track = await yt.search_related(
-                                title=getattr(current, "ytitle", None) or getattr(current, "title", ""),
-                                channel_name=getattr(current, "channel_name", None),
-                                exclude_id=getattr(current, "id", None),
-                            )
+                            
+                            _next_track = None
+                            
+                            # STEP 1: पहले रिलेटेड गाना ढूँढने की कोशिश करेगा (10 सेकंड)
+                            try:
+                                result = await asyncio.wait_for(
+                                    yt.search_related(
+                                        title=getattr(current, "ytitle", None) or getattr(current, "title", "Hindi Music"),
+                                        channel_name=getattr(current, "channel_name", None),
+                                        exclude_id=getattr(current, "id", None),
+                                    ),
+                                    timeout=10.0
+                                )
+                                if result:
+                                    _next_track = result[0] if isinstance(result, list) else result
+                            except Exception:
+                                pass
+                                
+                            # STEP 2: FALLBACK (अगर यूट्यूब ने रिलेटेड गाना नहीं दिया, तो 100% नया गाना सर्च करेगा)
+                            if not _next_track:
+                                try:
+                                    fallback_query = f"{getattr(current, 'title', 'Trending Hindi Song')} audio"
+                                    result = await asyncio.wait_for(
+                                        yt.search(fallback_query),
+                                        timeout=10.0
+                                    )
+                                    if result:
+                                        _next_track = result[0] if isinstance(result, list) else result
+                                except Exception:
+                                    pass
+                            
+                            # STEP 3: गाना मिल गया, अब डाउनलोड करके प्ले करेगा!
                             if _next_track:
                                 _next_track.user = "Autoplay"
                                 if not getattr(_next_track, "file_path", None):
-                                    _next_track.file_path = await yt.download(
-                                        _next_track.id,
-                                        is_live=getattr(_next_track, "is_live", False),
-                                        video=getattr(_next_track, "video", False),
-                                    )
+                                    try:
+                                        _next_track.file_path = await asyncio.wait_for(
+                                            yt.download(
+                                                _next_track.id,
+                                                is_live=getattr(_next_track, "is_live", False),
+                                                video=getattr(_next_track, "video", False),
+                                            ),
+                                            timeout=40.0
+                                        )
+                                    except Exception:
+                                        _next_track.file_path = None
+                                
                                 if _next_track.file_path:
                                     queue.add(chat_id, _next_track)
                                     await self.play_media(chat_id, _autoplay_msg, _next_track, message_chat_id=message_chat_id)
@@ -429,13 +464,15 @@ class TgCall(PyTgCalls):
                                     except Exception:
                                         pass
                                     return
-                            if _autoplay_msg:
-                                try:
-                                    await _autoplay_msg.delete()
-                                except Exception:
-                                    pass
-                        except Exception as e:
+                        except Exception:
                             pass
+                        
+                        # अगर सब कुछ फेल हो जाए, तो अटकेगा नहीं, मैसेज हटा देगा!
+                        if _autoplay_msg:
+                            try:
+                                await _autoplay_msg.delete()
+                            except Exception:
+                                pass
 
                     if config.AUTO_END:
                         _lang = await lang.get_lang(chat_id)
@@ -613,4 +650,4 @@ class TgCall(PyTgCalls):
             
         asyncio.create_task(self.auto_update_player())
         logger.info("📞 PyTgCalls client(s) started & Smart Timer Loop is running.")
-            
+        
