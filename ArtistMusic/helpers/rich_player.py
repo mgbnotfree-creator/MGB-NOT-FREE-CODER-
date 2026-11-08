@@ -43,9 +43,12 @@ def progress_text(media, timer: Optional[str] = None) -> str:
         return timer or "LIVE"
     played = max(0, min(int(float(getattr(media, "time", 0) or 0)), duration))
     
+    # 🔴 FIX: प्रोग्रेस बार का बेहतर कैलकुलेशन
     n = 12
-    filled = int(round(n * played / duration))
+    percentage = played / duration if duration > 0 else 0
+    filled = min(n, int(round(n * percentage)))
     bar = "—" * filled + "●" + "—" * (n - filled)
+    
     return f"{_time(played, duration)} {bar} {_time(duration, duration)}"
 
 def _clean_base_html(base_html: str) -> str:
@@ -56,7 +59,6 @@ def _clean_base_html(base_html: str) -> str:
     return text
 
 def _styles(playing: bool):
-    """🔥 हर 5 सेकंड में कलर्स बदलेगा!"""
     phase = int(time.time() // 5) % 4 if playing else 0
     palettes = (
         ("danger", "success", "primary", "danger"),
@@ -69,16 +71,23 @@ def _styles(playing: bool):
 def get_player_html(chat_id: int, played_sec: int = 0, duration_sec: int = 0, playing: bool = True, autoplay: bool = False) -> str:
     time_style, replay_style, state_style, queue_style = _styles(playing)
     
-    # 🔴 ARROW 1 FIX: Pause/Play से इमोजी हटा दिया गया है
     state = "pause" if playing else "resume"
-    label = "ᴘᴀᴜꜱᴇ" if playing else "ᴘʟᴀʏ"
+    label = "Pause" if playing else "Resume"
     
     if duration_sec > 0:
-        p = f"{_time(played_sec, duration_sec)} {'—'*6}●{'—'*6} {_time(duration_sec, duration_sec)}"
+        # 🔴 FIX: यहाँ progress_text फंक्शन का इस्तेमाल करें
+        # p = f"{_time(played_sec, duration_sec)} {'—'*6}●{'—'*6} {_time(duration_sec, duration_sec)}"
+        class DummyMedia:
+            def __init__(self, time, duration_sec):
+                self.time = time
+                self.duration_sec = duration_sec
+        dummy_media = DummyMedia(played_sec, duration_sec)
+        p = progress_text(dummy_media)
     else:
         p = "LIVE"
     
-    ap_label = "AUTOPLAY | ON" if autoplay else "AUTOPLAY | OFF"
+    # 🔴 FIX: ऑटप्ले बटन का सही लेबल
+    ap_label = "Autoplay: ON" if autoplay else "Autoplay: OFF"
     ap_style = "success" if autoplay else "danger"
     
     return (
@@ -87,19 +96,17 @@ def get_player_html(chat_id: int, played_sec: int = 0, duration_sec: int = 0, pl
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
         f'<tg-button type="callback_data" style="{state_style}" data="controls {state} {chat_id}">{label}</tg-button>'
-        f'<tg-button type="callback_data" style="{time_style}" data="controls replay {chat_id}">↻ ʀᴇᴘʟᴀʏ</tg-button>'
-        f'<tg-button type="callback_data" style="{replay_style}" data="controls skip {chat_id}">⚠️ ꜱᴋɪᴘ</tg-button>'
-        f'<tg-button type="callback_data" style="{queue_style}" data="controls stop {chat_id}">▢ ꜱᴛᴏᴘ</tg-button>'
+        f'<tg-button type="callback_data" style="{time_style}" data="controls replay {chat_id}">Replay</tg-button>'
+        f'<tg-button type="callback_data" style="{replay_style}" data="controls shuffle {chat_id}">Shuffle</tg-button>'
+        f'<tg-button type="callback_data" style="{queue_style}" data="controls skip {chat_id}">Skip</tg-button>'
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
-        f'<tg-button type="callback_data" style="{ap_style}" data="controls autoplay {chat_id}">♾ {ap_label}</tg-button>'
-        
-        # 🔴 ARROW 2 FIX: Thumb से इमोजी हटा दिया गया है
-        f'<tg-button type="callback_data" style="primary" data="controls thumb {chat_id}">ᴛʜᴜᴍʙ | ᴏɴ</tg-button>'
-        
+        f'<tg-button type="callback_data" style="danger" data="controls loop {chat_id}">Loop</tg-button>'
+        f'<tg-button type="callback_data" style="primary" data="controls close {chat_id}">Close</tg-button>'
+        f'<tg-button type="callback_data" style="danger" data="controls stop {chat_id}">Stop</tg-button>'
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
-        f'<tg-button type="callback_data" style="danger" data="controls close {chat_id}">• ᴄʟᴏꜱᴇ •</tg-button>'
+        f'<tg-button type="callback_data" style="{ap_style}" data="controls autoplay {chat_id}">{ap_label}</tg-button>'
         f'</tg-button-row>'
     )
 
@@ -109,7 +116,6 @@ def _format_player_card(base_html: str) -> str:
     clean = re.sub(r"\n{3,}", "\n\n", clean).strip()
     lines = [line.strip() for line in clean.splitlines() if line.strip()]
 
-    # 🔴 ARROW 3 FIX (SPACE): गाने के नाम (title) और टाइमिंग (details) के बीच <br><br> लगा दिया है!
     if len(lines) >= 4:
         header = lines[0]
         title = lines[1]
@@ -180,6 +186,7 @@ def _cache_message_media(chat_id, message_id, result, fallback):
         _PLAYER_MEDIA[(chat_id, message_id)] = fallback
 
 async def send_player(chat_id: int, base_html: str, photo=None, media=None, reply_to_message_id=None, *, playing=True, queue_mode=False, autoplay=None, **kwargs) -> int:
+    # 🔴 FIX: ऑटप्ले स्टेटस को सही तरह से हैंडल करें
     if autoplay is not None:
         _PLAYER_AUTOPLAY[chat_id] = bool(autoplay)
     else:
@@ -208,6 +215,7 @@ async def send_player(chat_id: int, base_html: str, photo=None, media=None, repl
 async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, timer=None, playing=True, remove=False, photo=None, autoplay=None) -> bool:
     key = (chat_id, message_id)
     
+    # 🔴 FIX: ऑटप्ले स्टेटस को सही तरह से हैंडल करें
     if autoplay is not None:
         _PLAYER_AUTOPLAY[chat_id] = bool(autoplay)
     else:
@@ -263,4 +271,4 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
                 except Exception:
                     pass
             return False
-        
+    
