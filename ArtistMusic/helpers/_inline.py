@@ -5,7 +5,7 @@ from pyrogram.enums import ButtonStyle
 from ArtistMusic import app, config, lang
 
 # ---------------------------------------------------------
-# 🎨 SMART DYNAMIC COLORS & TIMER (VelocityBots Style)
+# 🎨 SMART DYNAMIC COLORS & TIMER
 # ---------------------------------------------------------
 
 def _time_format(sec: int, duration: int) -> str:
@@ -13,7 +13,6 @@ def _time_format(sec: int, duration: int) -> str:
     return time.strftime("%H:%M:%S" if duration >= 3600 else "%M:%S", time.gmtime(sec))
 
 def progress_text(played_sec: int, duration_sec: int) -> str:
-    """लाइव टाइमर और लोडिंग बार बनाता है (जैसे 01:20 ━━●━━━ 04:30)"""
     if duration_sec <= 0:
         return "LIVE"
     played = max(0, min(played_sec, duration_sec))
@@ -23,7 +22,6 @@ def progress_text(played_sec: int, duration_sec: int) -> str:
     return f"{_time_format(played, duration_sec)} {bar} {_time_format(duration_sec, duration_sec)}"
 
 def _styles(playing: bool):
-    """हर 5 सेकंड में बटन्स का रंग घुमाता है!"""
     phase = int(time.time() // 5) % 4 if playing else 0
     palettes = (
         ("success", "primary", "danger", "success"),
@@ -35,30 +33,34 @@ def _styles(playing: bool):
 
 
 # ---------------------------------------------------------
-# HELP MENU: 21 buttons with custom style symbols & emojis
+# 🚀 HELP MENU: STYLISH FONTS & PROPER SIZING
+# छोटे नाम वाले बटन्स एक साथ, और बड़े नाम वाले एक साथ!
 # ---------------------------------------------------------
 HELP_GROUPS = [
-    ("play",        "𓇼 Play",           ["play"]),
-    ("playback",    "🐚 Playback",       ["pause", "resume", "skip", "stop"]),
-    ("seek",        "𖤍 Seek/Loop",      ["seek", "loop", "shuffle"]),
-    ("queue",       "×̷̷͜×̷ Queue",        ["queue", "autoplay"]),
-    ("playmode",    "𓆩♛𓆪 Playmode",     ["playmode", "link", "autoleave"]),
-    ("ban",         "𝄞 Ban",            ["ban", "gban"]),
-    ("mute",        "🦋 Mute",           ["mute", "mass"]),
-    ("promote",     "🕷 Promote",       ["promote", "auth"]),
-    ("group",       "✿ Group",          ["group", "welcome"]),
-    ("clean",       "𖤓 Clean",          ["purge", "zombies"]),
-    ("tag",         "𓇼 Tag All",        ["tag"]),
-    ("sticker",     "🐚 Stickers",      ["sticker"]),
-    ("info",        "𖤍 Info",           ["info", "bots"]),
-    ("sudo",        "×̷̷͜×̷ Sudo",         ["sudo"]),
-    ("broadcast",   "𓆩♛𓆪 Broadcast",    ["broadcast"]),
-    ("blacklist",   "𝄞 Blacklist",      ["blchat", "bluser"]),
-    ("maintenance", "🦋 Maintenance",   ["maintenance"]),
-    ("active",      "🕷 Active VCs",    ["active", "logs"]),
-    ("restart",     "✿ Restart",        ["restart", "leave"]),
-    ("eval",        "𖤓 Eval",           ["eval"]),
-    ("ping",        "𓇼 Ping",           ["ping", "stats"]),
+    # 🟢 SHORT BUTTONS (छोटे नाम वाले बटन्स)
+    ("play",        "𓇼 ᴘʟᴀʏ",           ["play"]),
+    ("ban",         "𝄞 ʙᴀɴ",            ["ban", "gban"]),
+    ("mute",        "🦋 ᴍᴜᴛᴇ",           ["mute", "mass"]),
+    ("info",        "𖤍 ɪɴꜰᴏ",           ["info", "bots"]),
+    ("sudo",        "×̷̷͜×̷ ꜱᴜᴅᴏ",         ["sudo"]),
+    ("ping",        "𓇼 ᴘɪɴɢ",           ["ping", "stats"]),
+    ("eval",        "𖤓 ᴇᴠᴀʟ",           ["eval"]),
+    ("group",       "✿ ɢʀᴏᴜᴘ",          ["group", "welcome"]),
+    ("clean",       "𖤓 ᴄʟᴇᴀɴ",          ["purge", "zombies"]),
+    ("queue",       "×̷̷͜×̷ ǫᴜᴇᴜᴇ",        ["queue", "autoplay"]),
+    ("tag",         "𓇼 ᴛᴀɢ ᴀʟʟ",        ["tag"]),
+    ("restart",     "✿ ʀᴇꜱᴛᴀʀᴛ",        ["restart", "leave"]),
+
+    # 🟡 LONG BUTTONS (बड़े नाम वाले बटन्स)
+    ("playback",    "🐚 ᴘʟᴀʏʙᴀᴄᴋ",       ["pause", "resume", "skip", "stop"]),
+    ("playmode",    "𓆩♛𓆪 ᴘʟᴀʏᴍᴏᴅᴇ",     ["playmode", "link", "autoleave"]),
+    ("seek",        "𖤍 ꜱᴇᴇᴋ / ʟᴏᴏᴘ",    ["seek", "loop", "shuffle"]),
+    ("promote",     "🕷 ᴘʀᴏᴍᴏᴛᴇ",       ["promote", "auth"]),
+    ("broadcast",   "𓆩♛𓆪 ʙʀᴏᴀᴅᴄᴀꜱᴛ",    ["broadcast"]),
+    ("blacklist",   "𝄞 ʙʟᴀᴄᴋʟɪꜱᴛ",      ["blchat", "bluser"]),
+    ("maintenance", "🦋 ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ",   ["maintenance"]),
+    ("active",      "🕷 ᴀᴄᴛɪᴠᴇ ᴠᴄꜱ",    ["active", "logs"]),
+    ("sticker",     "🐚 ꜱᴛɪᴄᴋᴇʀꜱ",      ["sticker"]),
 ]
 
 
@@ -76,18 +78,17 @@ class Inline:
             )
         ]])
 
-    # 🚀 1. NEW SMART HTML PLAYER CONTROLS (कलरफुल टाइमर और HTML वाले बटन)
+    # 🚀 1. NEW SMART HTML PLAYER CONTROLS
     def controls_html(
         self, chat_id: int, played_sec: int = 0, duration_sec: int = 0, playing: bool = True
     ) -> str:
-        """यह आपका नया HTML प्लेयर कंट्रोल है!"""
         time_style, replay_style, state_style, queue_style = _styles(playing)
         state = "pause" if playing else "resume"
         label = "II Pause" if playing else "▷ Resume"
         p = progress_text(played_sec, duration_sec)
         
-        from ArtistMusic import db
-        ap_on = chat_id in db.autoplay_on
+        from ArtistMusic import tune
+        ap_on = tune.autoplay_enabled(chat_id)
         ap_label = "AUTOPLAY : ON" if ap_on else "AUTOPLAY : OFF"
         ap_style = "success" if ap_on else "primary"
         
@@ -107,16 +108,10 @@ class Inline:
             f'</tg-button-row>'
         )
 
-    # 🛑 2. OLD NORMAL CONTROLS (बॉट को क्रैश होने से बचाने के लिए बैकअप)
+    # 🛑 2. OLD NORMAL CONTROLS BACKUP
     def controls(
         self, chat_id: int, status: str = None, timer: str = None, remove: bool = False,
     ) -> types.InlineKeyboardMarkup:
-        """यह पुराना नॉर्मल प्लेयर कंट्रोल है। 
-        अगर बॉट HTML प्लेयर (Rich Message) इस्तेमाल कर रहा है, तो यह खाली कीबोर्ड भेजेगा 
-        ताकि नीचे कोई फालतू ग्रे बटन न चिपके!"""
-        
-        # 🚀 SMART FIX: अगर टाइमर अपडेट हो रहा है (मतलब HTML प्लेयर चल रहा है), 
-        # तो फालतू पुराना ग्रे कीबोर्ड मत भेजो!
         if timer:
             return self.ikm([[]])
 
@@ -141,11 +136,11 @@ class Inline:
         return self.ikm(keyboard)
 
 
-    # 🎨 3. COLORFUL HTML HELP MENU (VelocityBots Style HTML Buttons)
+    # 🎨 3. COLORFUL HTML HELP MENU 
     def help_markup(
         self, _lang: dict, back: bool = False
     ) -> str:
-        """हेल्प मेन्यू के लिए कलरफुल HTML बटन्स (3-3 के ग्रिड में)"""
+        """हेल्प मेन्यू - 2-2 का ग्रिड ताकि बटन्स खुले-खुले और स्पेस वाले दिखें!"""
         if back:
             return (
                 f'<tg-button-row align="center">'
@@ -154,12 +149,12 @@ class Inline:
             )
         
         rows_html = ""
-        batch_size = 3
+        batch_size = 2 # 🔥 3 की जगह 2 कर दिया, जिससे बटन्स को बहुत सारा स्पेस मिलेगा!
         for i in range(0, len(HELP_GROUPS), batch_size):
             chunk = HELP_GROUPS[i:i + batch_size]
             row_buttons = ""
             for idx, (_key, _label, _) in enumerate(chunk):
-                style = "success" if (i + idx) % 3 == 1 else ("danger" if (i + idx) % 3 == 2 else "primary")
+                style = "success" if (i + idx) % 3 == 0 else ("primary" if (i + idx) % 3 == 1 else "danger")
                 row_buttons += f'<tg-button type="callback_data" style="{style}" data="help_{_key}">{_label}</tg-button>'
             rows_html += f'<tg-button-row align="center">{row_buttons}</tg-button-row>'
         
