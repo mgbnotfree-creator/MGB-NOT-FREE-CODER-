@@ -111,12 +111,19 @@ class Inline:
     def controls(
         self, chat_id: int, status: str = None, timer: str = None, remove: bool = False,
     ) -> types.InlineKeyboardMarkup:
-        """यह पुराना नॉर्मल प्लेयर कंट्रोल है जो बॉट को क्रैश होने से बचाएगा।"""
+        """यह पुराना नॉर्मल प्लेयर कंट्रोल है। 
+        अगर बॉट HTML प्लेयर (Rich Message) इस्तेमाल कर रहा है, तो यह खाली कीबोर्ड भेजेगा 
+        ताकि नीचे कोई फालतू ग्रे बटन न चिपके!"""
+        
+        # 🚀 SMART FIX: अगर टाइमर अपडेट हो रहा है (मतलब HTML प्लेयर चल रहा है), 
+        # तो फालतू पुराना ग्रे कीबोर्ड मत भेजो!
+        if timer:
+            return self.ikm([[]])
+
         keyboard = []
         if status:
             keyboard.append([self.ikb(text=f"{status}", callback_data=f"controls status {chat_id}", style=ButtonStyle.PRIMARY)])
-        elif timer:
-            keyboard.append([self.ikb(text=f"{timer}", callback_data=f"controls status {chat_id}", style=ButtonStyle.PRIMARY)])
+            
         if not remove:
             keyboard.append([
                 self.ikb(text="II", callback_data=f"controls pause {chat_id}", style=ButtonStyle.PRIMARY),
@@ -299,4 +306,3 @@ class Inline:
                 self.ikb(text="📥 ᴅᴏᴡɴʟᴏᴀᴅ", url=link,       style=ButtonStyle.DANGER),
             ],
         ])
-    
