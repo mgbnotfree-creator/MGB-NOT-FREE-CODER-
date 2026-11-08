@@ -41,6 +41,7 @@ class TgCall(PyTgCalls):
         self._play_next_locks = {}  
         self._stream_end_cache = {}  
         self._autoplay = defaultdict(bool)  
+        self.active_chats = set() # 🔥 Smart Timer Tracker
 
     async def _edit_media_with_retry(self, message: Message, media_obj: InputMediaPhoto, reply_markup):
         try:
@@ -78,6 +79,7 @@ class TgCall(PyTgCalls):
             await db.playing(chat_id, paused=False)
             await db.remove_call(chat_id)
             queue.clear(chat_id)
+            self.active_chats.discard(chat_id)
             return False
         except Exception as e:
             await db.playing(chat_id, paused=False)
@@ -93,6 +95,7 @@ class TgCall(PyTgCalls):
             await db.playing(chat_id, paused=False)
             await db.remove_call(chat_id)
             queue.clear(chat_id)
+            self.active_chats.discard(chat_id)
             return False
         except Exception as e:
             return False
@@ -106,6 +109,7 @@ class TgCall(PyTgCalls):
         try:
             queue.clear(chat_id)
             await db.remove_call(chat_id)
+            self.active_chats.discard(chat_id) # 🔥 Remove from tracker
         except Exception:
             pass
         try:
@@ -229,6 +233,7 @@ class TgCall(PyTgCalls):
 
             if not seek_time:
                 await db.add_call(chat_id)
+                self.active_chats.add(chat_id) # 🔥 Add to tracker
                 text = _lang["play_media"].format(media.url, media.title, media.duration, media.user)
                 
                 if not media.is_live and media.duration_sec:
@@ -255,14 +260,14 @@ class TgCall(PyTgCalls):
                     try:
                         ok = await edit_player(
                             target_chat_for_messages, media.message_id, text, media,
-                            playing=True, photo=_thumb, autoplay=bool(await db.get_autoplay(chat_id)),
+                            playing=True, photo=_thumb, autoplay=self.autoplay_enabled(chat_id),
                         )
                     except Exception as rich_error:
                         ok = False
                     if not ok:
                         try:
                             media.message_id = await send_player(
-                                target_chat_for_messages, text, _thumb, media, playing=True, autoplay=bool(await db.get_autoplay(chat_id))
+                                target_chat_for_messages, text, _thumb, media, playing=True, autoplay=self.autoplay_enabled(chat_id)
                             )
                         except Exception as rich_error:
                             pass
@@ -274,7 +279,7 @@ class TgCall(PyTgCalls):
                             pass
                     try:
                         media.message_id = await send_player(
-                            target_chat_for_messages, text, _thumb, media, playing=True, autoplay=bool(await db.get_autoplay(chat_id))
+                            target_chat_for_messages, text, _thumb, media, playing=True, autoplay=self.autoplay_enabled(chat_id)
                         )
                     except Exception as rich_error:
                         sent_photo = await self._send_photo_with_retry(
@@ -458,9 +463,8 @@ class TgCall(PyTgCalls):
                 media = queue.get_next(chat_id)
 
                 if not media:
-                    if current and loop_mode == 0 and await db.get_autoplay(chat_id) and not getattr(current, "is_live", False):
+                    if current and loop_mode == 0 and self.autoplay_enabled(chat_id) and not getattr(current, "is_live", False):
                         try:
-                            # Using 🔄 instead of next_play_emoji to avoid import error
                             _autoplay_msg = await app.send_message(chat_id=target_chat, text="🔄")
                             _next_track = await yt.search_related(
                                 title=getattr(current, "ytitle", None) or getattr(current, "title", ""),
@@ -608,12 +612,12 @@ class TgCall(PyTgCalls):
     # 🚀 SMART AUTO-UPDATER LOOP (NEW DYNAMIC PLAYER)
     # ---------------------------------------------------------
     async def auto_update_player(self):
-        """यह बैकग्राउंड में हर 5 सेकंड में घूमेगा और कलर्स, टाइमर व ऑटोप्ले अपडेट करेगा!"""
+        """🔥 100% WORKING TIMER, COLOR & AUTOPLAY LOOP 🔥"""
         while True:
             await asyncio.sleep(5)
-            try:
-                # db.active_calls में वो सारे ग्रुप्स होते हैं जहाँ गाना चल रहा है
-                for chat_id in list(db.active_calls):
+            # list() का इस्तेमाल किया ताकि साइज़ चेंज होने पर क्रैश न हो
+            for chat_id in list(self.active_chats):
+                try:
                     playing = await db.playing(chat_id)
                     media = queue.get_current(chat_id)
                     
@@ -627,7 +631,6 @@ class TgCall(PyTgCalls):
                         # 2. प्लेयर के कलर्स, टाइमर और ऑटोप्ले बटन को रिफ्रेश करो!
                         try:
                             from ArtistMusic.helpers.rich_player import edit_player
-                            autoplay_state = bool(await db.get_autoplay(chat_id))
                             
                             await edit_player(
                                 chat_id=chat_id,
@@ -636,12 +639,12 @@ class TgCall(PyTgCalls):
                                 media=media,
                                 playing=playing,
                                 photo=None,
-                                autoplay=autoplay_state
+                                autoplay=self.autoplay_enabled(chat_id)
                             )
                         except Exception as e:
                             pass
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
     # ---------------------------------------------------------
     # 🚀 BOOT FUNCTION (UPDATED)
@@ -654,8 +657,8 @@ class TgCall(PyTgCalls):
             self.clients.append(client)
             await self.decorators(client)
             
-        # 🔥 बॉट ऑन होते ही हमारा स्मार्ट लूप स्टार्ट हो जाएगा!
+        # 🔥 बॉट ऑन होते ही हमारा स्मार्ट लूप बैकग्राउंड में स्टार्ट हो जाएगा!
         asyncio.create_task(self.auto_update_player())
         
         logger.info("📞 PyTgCalls client(s) started & Smart Timer Loop is running.")
-        
+            
