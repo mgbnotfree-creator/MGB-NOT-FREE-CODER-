@@ -538,12 +538,12 @@ class TgCall(PyTgCalls):
                         types.ChatUpdate.Status.CLOSED_VOICE_CHAT,
                     ]:
                         await self.stop(update.chat_id)
-
     # ---------------------------------------------------------
-    # 🚀 100% PERFECT SMART LOOP FOR RICH HTML PLAYER
+    # 🚀 100% PERFECT REAL-TIME LOOP (सॉन्ग के साथ-साथ चलेगा)
     # ---------------------------------------------------------
     async def auto_update_player(self):
-        """🔥 हर 5 सेकंड में आपके शानदार HTML प्लेयर का टाइमर और कलर रिफ्रेश करेगा!"""
+        """🔥 यह टाइमर अब लूप की स्पीड पर नहीं, असली घड़ी (Real Time) पर चलता है!"""
+        import time as time_mod
         while True:
             await asyncio.sleep(5)
             for chat_id in list(self.active_chats):
@@ -551,13 +551,27 @@ class TgCall(PyTgCalls):
                     playing = await db.playing(chat_id)
                     media = queue.get_current(chat_id)
                     
-                    if media and playing:
+                    if media:
                         if getattr(media, "duration_sec", 0) > 0:
-                            if not hasattr(media, "time") or media.time is None:
-                                media.time = 1
-                            media.time += 5
-                            if media.time > media.duration_sec:
-                                media.time = media.duration_sec
+                            now = time_mod.time()
+                            
+                            # अगर नया गाना है, तो उसका स्टार्ट टाइम सेव करो
+                            if not hasattr(media, "real_start_time"):
+                                media.real_start_time = now - getattr(media, "time", 0)
+                                media.is_paused = not playing
+                            
+                            if playing:
+                                # अगर गाना अभी-अभी Pause से Resume हुआ है
+                                if getattr(media, "is_paused", False):
+                                    media.real_start_time = now - getattr(media, "time", 0)
+                                    media.is_paused = False
+                                
+                                # एकदम सटीक घड़ी के हिसाब से टाइम सेट करो
+                                media.time = now - media.real_start_time
+                                if media.time > media.duration_sec:
+                                    media.time = media.duration_sec
+                            else:
+                                media.is_paused = True
                         
                         try:
                             msg_id = getattr(media, "message_id", None)
@@ -573,15 +587,14 @@ class TgCall(PyTgCalls):
                                         break
                             
                             if msg_id and base_text:
-                                from ArtistMusic.helpers.rich_player import edit_player
-                                # 🔥 FIX: tune हटा दिया गया है, अब यह self.autoplay_enabled का यूज़ करेगा!
+                                from ArtistMusic.helpers.rich_player import edit_player, _PLAYER_AUTOPLAY
                                 await edit_player(
                                     chat_id=chat_id,
                                     message_id=msg_id,
                                     base_html=base_text,
                                     media=media,
                                     playing=playing,
-                                    autoplay=self.autoplay_enabled(chat_id)
+                                    autoplay=_PLAYER_AUTOPLAY.get(chat_id, False)
                                 )
                         except Exception:
                             pass
@@ -601,4 +614,4 @@ class TgCall(PyTgCalls):
             
         asyncio.create_task(self.auto_update_player())
         logger.info("📞 PyTgCalls client(s) started & Smart Timer Loop is running.")
-        
+                                        
