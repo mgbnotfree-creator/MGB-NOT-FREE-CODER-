@@ -7,14 +7,12 @@ import urllib.parse
 from typing import Optional
 import aiohttp
 
-# 🚀 CHANGED: Elevenyts से बदलकर आपके बॉट ArtistMusic का config लगाया गया है
-from ArtistMusic import config
+# 🚀 CHANGED: config और tune को इम्पोर्ट किया गया है ताकि Autoplay काम करे
+from ArtistMusic import config, tune
 
 _PLAYER_PHOTOS: dict[tuple[int, int], str] = {}
 _PLAYER_MEDIA: dict[tuple[int, int], str] = {}
 _PLAYER_LOCKS: dict[tuple[int, int], object] = {}
-_PLAYER_AUTOPLAY: dict[int, bool] = {}
-
 
 def _api(method: str) -> str:
     return f"https://api.telegram.org/bot{config.BOT_TOKEN}/{method}"
@@ -198,11 +196,13 @@ def _cache_message_media(chat_id, message_id, result, fallback):
 
 
 async def send_player(chat_id: int, base_html: str, photo=None, media=None, reply_to_message_id=None, *, playing=True, queue_mode=False, autoplay=None, **kwargs) -> int:
+    # 🔥 FIX: अब Autoplay सही डेटाबेस से शो होगा!
     if autoplay is None:
-        autoplay = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
-    else:
-        autoplay = bool(autoplay)
-        _PLAYER_AUTOPLAY[chat_id] = autoplay
+        try:
+            autoplay = tune.autoplay_enabled(chat_id)
+        except Exception:
+            autoplay = False
+            
     player_html = rich_html(base_html, chat_id, media, playing=playing, queue_mode=queue_mode, autoplay=autoplay)
     ref = _photo_source(chat_id, 0, media, photo)
     rich = {"html": player_html}
@@ -222,11 +222,14 @@ async def send_player(chat_id: int, base_html: str, photo=None, media=None, repl
 async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, timer=None,
                       playing=True, remove=False, photo=None, autoplay=None) -> bool:
     key = (chat_id, message_id)
+    
+    # 🔥 FIX: अब Autoplay लाइव अपडेट होगा!
     if autoplay is None:
-        autoplay = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
-    else:
-        autoplay = bool(autoplay)
-        _PLAYER_AUTOPLAY[chat_id] = autoplay
+        try:
+            autoplay = tune.autoplay_enabled(chat_id)
+        except Exception:
+            autoplay = False
+            
     if remove:
         try:
             await _request("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
@@ -234,7 +237,6 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
             return False
         _PLAYER_PHOTOS.pop(key, None)
         _PLAYER_MEDIA.pop(key, None)
-        _PLAYER_AUTOPLAY.pop(chat_id, None)
         return True
 
     lock = _PLAYER_LOCKS.get(key)
@@ -286,7 +288,6 @@ async def edit_rich_message(message, text, markup=None, photo_file_id=None, **kw
     media = kwargs.get("media")
     if media is None:
         try:
-            # 🚀 CHANGED: Elevenyts से बदलकर ArtistMusic किया गया है
             from ArtistMusic import queue
             media = queue.get_current(chat_id)
         except Exception:
@@ -375,3 +376,4 @@ async def edit_player_message(chat_id, message_id, base_html, media, *args, **kw
                              playing=kwargs.get("playing", True),
                              remove=kwargs.get("remove", False),
                              photo=kwargs.get("photo"))
+                                      
