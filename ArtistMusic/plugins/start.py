@@ -14,7 +14,7 @@ import asyncio
 import random
 import aiohttp
 from pyrogram import enums, errors, filters, types
-from pyrogram import StopPropagation  # 🚀 Added to intercept old buttons!
+from pyrogram import StopPropagation
 
 from ArtistMusic import app, config, db, lang, logger
 from ArtistMusic.helpers import buttons, utils
@@ -110,13 +110,13 @@ async def _send_rich_help(chat_id: int, photo_url: str, text: str, html_buttons:
 
 
 # ----------------------------------------------------------
-# 🚀 SUPER OVERRIDES (FIXES GREY BUTTONS ON CLOSE/BACK) 🚀
+# 🚀 SUPER OVERRIDES (FIXES HELP MENU & CLOSE BUTTONS) 🚀
 # ----------------------------------------------------------
 
 @app.on_callback_query(filters.regex(r"^start$") & ~app.bl_users, group=-1)
 @lang.language()
 async def rich_start_cb(_, query: types.CallbackQuery):
-    """जब आप '❌ CLOSE' दबाएंगे, तो यह ग्रे बटन्स को रोककर नया कलरफुल स्टार्ट मेन्यू लाएगा!"""
+    """जब आप '❌ CLOSE' दबाएंगे, तो यह नया कलरफुल स्टार्ट मेन्यू लाएगा!"""
     await query.answer()
     _text = (
         query.lang["start_pm"].format(query.from_user.first_name, app.name)
@@ -125,25 +125,29 @@ async def rich_start_cb(_, query: types.CallbackQuery):
     )
     try:
         await query.message.delete()
-        if config.START_IMG and config.START_IMG.strip():
-            await _send_rich_start(query.message.chat.id, config.START_IMG, _text)
     except Exception:
         pass
-    raise StopPropagation  # पुराने ग्रे बटन वाले कोड को चलने से रोक देता है
+        
+    if config.START_IMG and config.START_IMG.strip():
+        await _send_rich_start(query.message.chat.id, config.START_IMG, _text)
+        
+    raise StopPropagation  
 
-@app.on_callback_query(filters.regex(r"^help_(.*)$") & ~app.bl_users, group=-1)
+@app.on_callback_query(filters.regex(r"^help$|^help_") & ~app.bl_users, group=-1)
 @lang.language()
 async def rich_help_categories_cb(_, query: types.CallbackQuery):
-    """हेल्प मेन्यू के सारे बटन्स (Play, Info, Back) को कलरफुल HTML में लोड करने के लिए!"""
-    category = query.matches[0].group(1)
+    """यह हेल्प मेन्यू के सभी अंदरूनी बटन्स (Play, Sudo, आदि) को बिना क्रैश हुए HTML में लोड करेगा!"""
     
-    # Language menu को न छेड़ें
+    data = query.data
+    category = data.replace("help_", "") if data.startswith("help_") else "main"
+    
+    # Language menu को पुराना ही रहने दें
     if category == "langs":
         return
         
     await query.answer()
     
-    if category == "main":
+    if category == "main" or data == "help":
         help_text = (
             f"<b>✨ {app.name} - HELP MENU ✨</b>\n\n"
             "• <b>/play [Song Name / URL]</b> - Play music in voice chat\n"
@@ -156,15 +160,20 @@ async def rich_help_categories_cb(_, query: types.CallbackQuery):
         )
         html_buttons = buttons.help_markup(query.lang)
     else:
-        help_text = buttons.help_text(query.lang, category) or query.lang.get(f"help_{category}") or "Help content not found."
+        raw_text = buttons.help_text(query.lang, category) or query.lang.get(f"help_{category}") or "Help content not found."
+        # HTML API को क्रैश होने से बचाने के लिए < और > को एस्केप किया गया है
+        help_text = str(raw_text).replace("<", "&lt;").replace(">", "&gt;")
         html_buttons = buttons.help_markup(query.lang, back=True)
         
     try:
         await query.message.delete()
-        await _send_rich_help(query.message.chat.id, config.START_IMG, help_text, html_buttons)
     except Exception:
         pass
-    raise StopPropagation  # पुराने क्रैश होने वाले कोड को रोक देता है
+        
+    if config.START_IMG and config.START_IMG.strip():
+        await _send_rich_help(query.message.chat.id, config.START_IMG, help_text, html_buttons)
+        
+    raise StopPropagation # यह पुराने क्रैश करने वाले कोड को चलने से पूरी तरह रोक देता है!
 
 
 # ----------------------------------------------------------
@@ -269,3 +278,4 @@ async def _new_member(_, message: types.Message):
         if member.id == app.id:
             if await db.is_chat(message.chat.id): return
             await db.add_chat(message.chat.id)
+        
