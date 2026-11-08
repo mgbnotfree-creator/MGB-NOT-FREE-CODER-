@@ -6,13 +6,14 @@ import time
 import urllib.parse
 from typing import Optional
 import aiohttp
+import asyncio
 
-from ArtistMusic import config
+from ArtistMusic import app, config, db
 
 _PLAYER_PHOTOS: dict[tuple[int, int], str] = {}
 _PLAYER_MEDIA: dict[tuple[int, int], str] = {}
 _PLAYER_LOCKS: dict[tuple[int, int], object] = {}
-_PLAYER_AUTOPLAY: dict[int, bool] = {}
+_PLAYER_AUTOPLAY: dict[int, bool] = {} 
 
 def _api(method: str) -> str:
     return f"https://api.telegram.org/bot{config.BOT_TOKEN}/{method}"
@@ -41,9 +42,10 @@ def progress_text(media, timer: Optional[str] = None) -> str:
     if duration <= 0:
         return timer or "LIVE"
     played = max(0, min(int(float(getattr(media, "time", 0) or 0)), duration))
-    n = 14
+    
+    n = 12
     filled = int(round(n * played / duration))
-    bar = "━" * filled + "●" + "━" * (n - filled)
+    bar = "—" * filled + "●" + "—" * (n - filled)
     return f"{_time(played, duration)} {bar} {_time(duration, duration)}"
 
 def _clean_base_html(base_html: str) -> str:
@@ -54,20 +56,27 @@ def _clean_base_html(base_html: str) -> str:
     return text
 
 def _styles(playing: bool):
+    """🔥 हर 5 सेकंड में कलर्स बदलेगा!"""
     phase = int(time.time() // 5) % 4 if playing else 0
     palettes = (
+        ("danger", "success", "primary", "danger"),
+        ("primary", "danger", "success", "primary"),
         ("success", "primary", "danger", "success"),
-        ("primary", "success", "success", "danger"),
-        ("danger", "primary", "success", "primary"),
-        ("success", "danger", "primary", "success"),
+        ("danger", "success", "primary", "danger"),
     )
     return palettes[phase]
 
 def get_player_html(chat_id: int, played_sec: int = 0, duration_sec: int = 0, playing: bool = True, autoplay: bool = False) -> str:
     time_style, replay_style, state_style, queue_style = _styles(playing)
+    
+    # 🔴 ARROW 1 FIX: Pause/Play से इमोजी हटा दिया गया है
     state = "pause" if playing else "resume"
-    label = "⏸ ᴘᴀᴜꜱᴇ" if playing else "▶️ ᴘʟᴀʏ"
-    p = progress_text(None, timer=f"{_time(played_sec, duration_sec)} {'━'*7}●{'━'*7} {_time(duration_sec, duration_sec)}") if duration_sec > 0 else "LIVE"
+    label = "ᴘᴀᴜꜱᴇ" if playing else "ᴘʟᴀʏ"
+    
+    if duration_sec > 0:
+        p = f"{_time(played_sec, duration_sec)} {'—'*6}●{'—'*6} {_time(duration_sec, duration_sec)}"
+    else:
+        p = "LIVE"
     
     ap_label = "AUTOPLAY | ON" if autoplay else "AUTOPLAY | OFF"
     ap_style = "success" if autoplay else "danger"
@@ -79,20 +88,46 @@ def get_player_html(chat_id: int, played_sec: int = 0, duration_sec: int = 0, pl
         f'<tg-button-row align="center">'
         f'<tg-button type="callback_data" style="{state_style}" data="controls {state} {chat_id}">{label}</tg-button>'
         f'<tg-button type="callback_data" style="{time_style}" data="controls replay {chat_id}">↻ ʀᴇᴘʟᴀʏ</tg-button>'
-        f'<tg-button type="callback_data" style="{replay_style}" data="controls skip {chat_id}">⚠︎ ꜱᴋɪᴘ</tg-button>'
+        f'<tg-button type="callback_data" style="{replay_style}" data="controls skip {chat_id}">⚠️ ꜱᴋɪᴘ</tg-button>'
         f'<tg-button type="callback_data" style="{queue_style}" data="controls stop {chat_id}">▢ ꜱᴛᴏᴘ</tg-button>'
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
         f'<tg-button type="callback_data" style="{ap_style}" data="controls autoplay {chat_id}">♾ {ap_label}</tg-button>'
-        f'<tg-button type="callback_data" style="primary" data="controls thumb {chat_id}">🖼 ᴛʜᴜᴍʙ | ᴏɴ</tg-button>'
+        
+        # 🔴 ARROW 2 FIX: Thumb से इमोजी हटा दिया गया है
+        f'<tg-button type="callback_data" style="primary" data="controls thumb {chat_id}">ᴛʜᴜᴍʙ | ᴏɴ</tg-button>'
+        
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
         f'<tg-button type="callback_data" style="danger" data="controls close {chat_id}">• ᴄʟᴏꜱᴇ •</tg-button>'
         f'</tg-button-row>'
     )
 
-def rich_html(base_html: str, chat_id: int, media, *, timer=None, playing=True, remove=False, queue_mode=False, autoplay=False) -> str:
+def _format_player_card(base_html: str) -> str:
     clean = _clean_base_html(base_html)
+    clean = re.sub(r"</?blockquote\b[^>]*>", "", clean, flags=re.I)
+    clean = re.sub(r"\n{3,}", "\n\n", clean).strip()
+    lines = [line.strip() for line in clean.splitlines() if line.strip()]
+
+    # 🔴 ARROW 3 FIX (SPACE): गाने के नाम (title) और टाइमिंग (details) के बीच <br><br> लगा दिया है!
+    if len(lines) >= 4:
+        header = lines[0]
+        title = lines[1]
+        details = lines[2]
+        footer = "<br>".join(lines[3:])
+        return (
+            f'<blockquote>{header}</blockquote>'
+            f'<blockquote>{title}<br><br>{details}</blockquote>'
+            f'<blockquote>{footer}</blockquote>'
+        )
+    if len(lines) >= 2:
+        header = lines[0]
+        details = "<br><br>".join(lines[1:])
+        return f'<blockquote>{header}</blockquote><blockquote>{details}</blockquote>'
+    return f'<blockquote>{clean}</blockquote>' if clean else ""
+
+def rich_html(base_html: str, chat_id: int, media, *, timer=None, playing=True, remove=False, queue_mode=False, autoplay=False) -> str:
+    clean = _format_player_card(base_html)
     if remove:
         return clean
     played = getattr(media, "time", 1) or 1
@@ -145,12 +180,11 @@ def _cache_message_media(chat_id, message_id, result, fallback):
         _PLAYER_MEDIA[(chat_id, message_id)] = fallback
 
 async def send_player(chat_id: int, base_html: str, photo=None, media=None, reply_to_message_id=None, *, playing=True, queue_mode=False, autoplay=None, **kwargs) -> int:
-    if autoplay is None:
-        autoplay = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
+    if autoplay is not None:
+        _PLAYER_AUTOPLAY[chat_id] = bool(autoplay)
     else:
-        autoplay = bool(autoplay)
-        _PLAYER_AUTOPLAY[chat_id] = autoplay
-        
+        autoplay = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
+
     player_html = rich_html(base_html, chat_id, media, playing=playing, queue_mode=queue_mode, autoplay=autoplay)
     ref = _photo_source(chat_id, 0, media, photo)
     rich = {"html": player_html}
@@ -173,12 +207,12 @@ async def send_player(chat_id: int, base_html: str, photo=None, media=None, repl
 
 async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, timer=None, playing=True, remove=False, photo=None, autoplay=None) -> bool:
     key = (chat_id, message_id)
-    if autoplay is None:
-        autoplay = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
+    
+    if autoplay is not None:
+        _PLAYER_AUTOPLAY[chat_id] = bool(autoplay)
     else:
-        autoplay = bool(autoplay)
-        _PLAYER_AUTOPLAY[chat_id] = autoplay
-        
+        autoplay = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
+
     if remove:
         try:
             await _request("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
@@ -186,11 +220,11 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
             return False
         _PLAYER_PHOTOS.pop(key, None)
         _PLAYER_MEDIA.pop(key, None)
+        _PLAYER_AUTOPLAY.pop(chat_id, None)
         return True
 
     lock = _PLAYER_LOCKS.get(key)
     if lock is None:
-        import asyncio
         lock = asyncio.Lock()
         _PLAYER_LOCKS[key] = lock
 
@@ -229,4 +263,4 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
                 except Exception:
                     pass
             return False
-    
+        
