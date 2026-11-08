@@ -8,7 +8,6 @@ from typing import Optional
 import aiohttp
 import asyncio
 
-from pyrogram import filters
 from ArtistMusic import app, config, db
 
 _PLAYER_PHOTOS: dict[tuple[int, int], str] = {}
@@ -34,22 +33,42 @@ def _youtube_thumb(media) -> Optional[str]:
         return f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
     return None
 
+def _parse_duration(media) -> int:
+    """🔥 अगर duration_sec न मिले, तो '03:30' टेक्स्ट से सेकंड्स निकाल लेगा!"""
+    dur = int(getattr(media, "duration_sec", 0) or 0)
+    if dur > 0:
+        return dur
+    dur_str = str(getattr(media, "duration", "") or "").strip()
+    if ":" in dur_str:
+        try:
+            parts = [int(p) for p in dur_str.split(":")]
+            if len(parts) == 2:
+                return parts[0] * 60 + parts[1]
+            elif len(parts) == 3:
+                return parts[0] * 3600 + parts[1] * 60 + parts[2]
+        except Exception:
+            pass
+    return 0
+
 def _time(sec: int, duration: int) -> str:
     sec = max(0, int(sec or 0))
     return time.strftime("%H:%M:%S" if duration >= 3600 else "%M:%S", time.gmtime(sec))
 
 def progress_text(media, timer: Optional[str] = None) -> str:
-    duration = int(getattr(media, "duration_sec", 0) or 0)
+    duration = _parse_duration(media)
     if duration <= 0:
         return timer or "LIVE"
+    
     played = max(0, min(int(float(getattr(media, "time", 0) or 0)), duration))
     
-    # 🔴 FIX: प्रोग्रेस बार का बिलकुल सटीक बिंदु (●) कैलकुलेशन
+    # 🔥 100% सटीक डॉट (●) पोजिशन कैलकुलेशन (0 से 12 स्टेप्स)
     n = 12
-    percentage = played / duration if duration > 0 else 0
-    filled = min(n, int(round(n * percentage)))
+    ratio = played / duration if duration > 0 else 0.0
+    filled = min(n, max(0, int(ratio * n)))
+    if played >= duration - 2:
+        filled = n
+        
     bar = "—" * filled + "●" + "—" * (n - filled)
-    
     return f"{_time(played, duration)} {bar} {_time(duration, duration)}"
 
 def _clean_base_html(base_html: str) -> str:
@@ -69,20 +88,13 @@ def _styles(playing: bool):
     )
     return palettes[phase]
 
-def get_player_html(chat_id: int, played_sec: int = 0, duration_sec: int = 0, playing: bool = True, autoplay: bool = False) -> str:
+def get_player_html(chat_id: int, media, playing: bool = True, autoplay: bool = False, timer: Optional[str] = None) -> str:
     time_style, replay_style, state_style, queue_style = _styles(playing)
     
     state = "pause" if playing else "resume"
     label = "ᴘᴀᴜꜱᴇ" if playing else "ᴘʟᴀʏ"
     
-    if duration_sec > 0:
-        class DummyMedia:
-            def __init__(self, time, duration_sec):
-                self.time = time
-                self.duration_sec = duration_sec
-        p = progress_text(DummyMedia(played_sec, duration_sec))
-    else:
-        p = "LIVE"
+    p = html.escape(progress_text(media, timer))
     
     ap_label = "AUTOPLAY | ON" if autoplay else "AUTOPLAY | OFF"
     ap_style = "success" if autoplay else "danger"
@@ -132,9 +144,7 @@ def rich_html(base_html: str, chat_id: int, media, *, timer=None, playing=True, 
     clean = _format_player_card(base_html)
     if remove:
         return clean
-    played = getattr(media, "time", 1) or 1
-    duration = getattr(media, "duration_sec", 0) or 0
-    return f"{clean}\n\n{get_player_html(chat_id, played, duration, playing, autoplay)}"
+    return f"{clean}\n\n{get_player_html(chat_id, media, playing, autoplay, timer=timer)}"
 
 async def _request(method: str, data: dict, file_path: Optional[str] = None) -> dict:
     timeout = aiohttp.ClientTimeout(total=90)
@@ -221,8 +231,10 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
             return False
         _PLAYER_PHOTOS.pop(key, None)
         _PLAYER_MEDIA.pop(key, None)
-        _PLAYER_AUTOPLAY.pop(chat_id, None)
         return True
+
+    if not base_html and media:
+        base_html = getattr(media, "player_text", "")
 
     lock = _PLAYER_LOCKS.get(key)
     if lock is None:
@@ -264,22 +276,4 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
                 except Exception:
                     pass
             return False
-
-# 🚀 FIX: ऑटोप्ले बटन को तुरंत स्क्रीन पर बदलने वाला सुपर-फास्ट हैंडलर!
-@app.on_callback_query(filters.regex(r"^controls autoplay"), group=10)
-async def instant_autoplay_fix(client, query):
-    try:
-        chat_id = int(query.data.split()[-1])
-        current_state = _PLAYER_AUTOPLAY.get(chat_id, False)
-        new_state = not current_state
-        _PLAYER_AUTOPLAY[chat_id] = new_state
-        
-        await query.answer(f"Autoplay turned {'ON' if new_state else 'OFF'} ♾")
-        
-        from ArtistMusic import queue
-        media = queue.get_current(chat_id)
-        if media:
-            base_text = getattr(media, "player_text", query.message.text or query.message.caption or "")
-            await edit_player(chat_id, query.message.id, base_text, media, autoplay=new_state)
-    except Exception:
-        pass
+            
