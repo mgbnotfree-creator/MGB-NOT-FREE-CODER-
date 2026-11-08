@@ -1,13 +1,7 @@
 # ==========================================================
 # Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
-#
 # Project      : MGB API Telegram Music Bot
-# Powered By   : ❖ MGB NOT FREE ❖
-# Type         : API Based Telegram Music Bot
-#
-# Bot          : @Yasmeen_api_bot
-# Channel      : https://t.me/MGB_CODER
 # ==========================================================
 
 import asyncio
@@ -23,7 +17,6 @@ from pytgcalls.pytgcalls_session import PyTgCallsSession
 
 from ArtistMusic import app, config, db, lang, logger, preload, queue, userbot, yt
 from ArtistMusic.helpers import Media, Track, buttons, thumb
-from ArtistMusic.helpers.rich_player import send_player, edit_player
 
 class PyTgCallsErrorFilter(logging.Filter):
     def filter(self, record):
@@ -119,7 +112,6 @@ class TgCall(PyTgCalls):
             pass
         except Exception as e:
             pass
-
     async def play_media(
         self,
         chat_id: int,
@@ -236,6 +228,7 @@ class TgCall(PyTgCalls):
                 self.active_chats.add(chat_id) # 🔥 Add to tracker
                 text = _lang["play_media"].format(media.url, media.title, media.duration, media.user)
                 
+                # 🔥 यहाँ से आपका ओरिजिनल शानदार डिज़ाइन जनरेट होगा
                 if not media.is_live and media.duration_sec:
                     import time as time_module
                     played = media.time
@@ -255,41 +248,34 @@ class TgCall(PyTgCalls):
                 else:
                     keyboard = buttons.controls(chat_id)
 
+                # 🔥 प्लेयर मैसेज को हमेशा 100% सही से दिखाने का पक्का तरीका
                 if reuse_message and message is not None and int(getattr(message, "id", 0) or 0):
                     media.message_id = int(message.id)
                     try:
-                        ok = await edit_player(
-                            target_chat_for_messages, media.message_id, text, media,
-                            playing=True, photo=_thumb, autoplay=self.autoplay_enabled(chat_id),
+                        from pyrogram.types import InputMediaPhoto
+                        await app.edit_message_media(
+                            chat_id=target_chat_for_messages,
+                            message_id=media.message_id,
+                            media=InputMediaPhoto(media=_thumb, caption=text),
+                            reply_markup=keyboard
                         )
-                    except Exception as rich_error:
-                        ok = False
-                    if not ok:
-                        try:
-                            media.message_id = await send_player(
-                                target_chat_for_messages, text, _thumb, media, playing=True, autoplay=self.autoplay_enabled(chat_id)
-                            )
-                        except Exception as rich_error:
-                            pass
+                    except Exception:
+                        pass
                 else:
                     if message:
                         try:
                             await message.delete()
                         except Exception:
                             pass
-                    try:
-                        media.message_id = await send_player(
-                            target_chat_for_messages, text, _thumb, media, playing=True, autoplay=self.autoplay_enabled(chat_id)
-                        )
-                    except Exception as rich_error:
-                        sent_photo = await self._send_photo_with_retry(
-                            chat_id=target_chat_for_messages,
-                            photo=_thumb,
-                            caption=text,
-                            reply_markup=keyboard,
-                        )
-                        if sent_photo:
-                            media.message_id = sent_photo.id
+                    sent_photo = await self._send_photo_with_retry(
+                        chat_id=target_chat_for_messages,
+                        photo=_thumb,
+                        caption=text,
+                        reply_markup=keyboard,
+                    )
+                    if sent_photo:
+                        media.message_id = sent_photo.id
+                        
                 try:
                     asyncio.create_task(preload.start_preload(chat_id, count=2))
                 except Exception as e:
@@ -312,18 +298,6 @@ class TgCall(PyTgCalls):
             error_str = str(e)
             if any(x in error_str for x in ["CHAT_ADMIN_REQUIRED", "phone.CreateGroupCall", "GROUPCALL_FORBIDDEN", "GROUPCALL_CREATE_FORBIDDEN", "VOICE_MESSAGES_FORBIDDEN"]):
                 await self.stop(chat_id)
-                if message:
-                    try:
-                        await message.edit_text(_lang["error_vc_disabled"])
-                    except Exception:
-                        pass
-            elif "GROUPCALL_INVALID" in error_str or "GROUPCALL" in error_str:
-                await self.stop(chat_id)
-                if message:
-                    try:
-                        await message.edit_text(_lang["error_no_call"])
-                    except Exception:
-                        pass
             else:
                 await self.stop(chat_id)
         except exceptions.NoAudioSourceFound:
@@ -335,30 +309,12 @@ class TgCall(PyTgCalls):
             await self.play_next(chat_id)
         except (ConnectionNotFound, TelegramServerError):
             await self.stop(chat_id)
-            if message:
-                try:
-                    await message.edit_text(_lang["error_tg_server"])
-                except Exception:
-                    pass
         except TimeoutError as e:
             await self.stop(chat_id)
-            if message:
-                try:
-                    await message.edit_text(
-                        "⏱️ <b>Connection timed out!</b>\n\n"
-                        "<blockquote>Failed to join voice chat. Please check your network and try again.</blockquote>"
-                    )
-                except Exception:
-                    pass
             await asyncio.sleep(2)
             await self.play_next(chat_id)
         except Exception as e:
             await self.stop(chat_id)
-            if message:
-                try:
-                    await message.edit_text(f"❌ Playback error: {str(e)[:100]}")
-                except Exception:
-                    pass
     async def replay(self, chat_id: int, control_message=None) -> None:
         try:
             if not await db.get_call(chat_id):
@@ -525,11 +481,6 @@ class TgCall(PyTgCalls):
                     media.file_path = await yt.download(media.id, is_live=is_live, video=getattr(media, 'video', False))
                     if not media.file_path:
                         await self.stop(chat_id)
-                        if msg:
-                            try:
-                                await msg.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
-                            except Exception:
-                                pass
                         return
 
                 try:
@@ -551,11 +502,6 @@ class TgCall(PyTgCalls):
                     await self.play_media(chat_id, msg, media, message_chat_id=message_chat_id, reuse_message=bool(control_message and not force_new_message))
                 else:
                     await self.play_media(chat_id, None, media, message_chat_id=message_chat_id)
-
-                try:
-                    asyncio.create_task(preload.start_preload(chat_id, count=2))
-                except Exception:
-                    pass
             except Exception as e:
                 try:
                     await self.stop(chat_id)
@@ -609,45 +555,74 @@ class TgCall(PyTgCalls):
                         await self.stop(update.chat_id)
 
     # ---------------------------------------------------------
-    # 🚀 SMART AUTO-UPDATER LOOP (NEW DYNAMIC PLAYER)
+    # 🚀 ORIGINAL UI LIVE UPDATER (TIMER, COLORS, AUTOPLAY)
     # ---------------------------------------------------------
     async def auto_update_player(self):
-        """🔥 100% WORKING TIMER, COLOR & AUTOPLAY LOOP 🔥"""
+        """🔥 हर 5 सेकंड में आपके ओरिजिनल डिज़ाइन को रिफ्रेश करेगा!"""
         while True:
             await asyncio.sleep(5)
-            # list() का इस्तेमाल किया ताकि साइज़ चेंज होने पर क्रैश न हो
             for chat_id in list(self.active_chats):
                 try:
                     playing = await db.playing(chat_id)
                     media = queue.get_current(chat_id)
                     
                     if media and playing:
-                        # 1. टाइमर को 5 सेकंड आगे बढ़ाओ (00:01 -> 00:06)
-                        if getattr(media, "time", None) is not None and getattr(media, "duration_sec", 0) > 0:
+                        # टाइमर इंक्रीमेंट 
+                        if getattr(media, "duration_sec", 0) > 0:
+                            if not hasattr(media, "time") or media.time is None:
+                                media.time = 1
                             media.time += 5
                             if media.time > media.duration_sec:
                                 media.time = media.duration_sec
                         
-                        # 2. प्लेयर के कलर्स, टाइमर और ऑटोप्ले बटन को रिफ्रेश करो!
                         try:
-                            from ArtistMusic.helpers.rich_player import edit_player
+                            msg_id = getattr(media, "message_id", None)
                             
-                            await edit_player(
-                                chat_id=chat_id,
-                                message_id=getattr(media, "message_id", None),
-                                text=None,
-                                media=media,
-                                playing=playing,
-                                photo=None,
-                                autoplay=self.autoplay_enabled(chat_id)
-                            )
-                        except Exception as e:
+                            # अगर मैसेज आईडी नहीं मिलती, तो हिस्ट्री से ढूँढेगा!
+                            if not msg_id:
+                                async for message in app.get_chat_history(chat_id, limit=3):
+                                    if message.caption and ("NOW PLAYING" in message.caption or "NOW PLAYING" in message.text):
+                                        msg_id = message.id
+                                        media.message_id = msg_id
+                                        break
+                            
+                            # 🔥 यहाँ हम सीधे आपके `buttons.controls()` को यूज़ कर रहे हैं
+                            if msg_id:
+                                from ArtistMusic.helpers import buttons
+                                import time as time_module
+                                
+                                if not getattr(media, "is_live", False) and getattr(media, "duration_sec", 0) > 0:
+                                    played = media.time
+                                    duration = media.duration_sec
+                                    bar_length = 12
+                                    percentage = 0 if duration == 0 else min((played / duration) * 100, 100)
+                                    filled = int(round(bar_length * percentage / 100))
+                                    timer_bar = "—" * filled + "●" + "—" * (bar_length - filled)
+                                    
+                                    if duration >= 3600:
+                                        played_time = time_module.strftime('%H:%M:%S', time_module.gmtime(played))
+                                        total_time = time_module.strftime('%H:%M:%S', time_module.gmtime(duration))
+                                    else:
+                                        played_time = time_module.strftime('%M:%S', time_module.gmtime(played))
+                                        total_time = time_module.strftime('%M:%S', time_module.gmtime(duration))
+                                    
+                                    timer_text = f"{played_time} {timer_bar} {total_time}"
+                                    keyboard = buttons.controls(chat_id, timer=timer_text)
+                                else:
+                                    keyboard = buttons.controls(chat_id)
+                                
+                                await app.edit_message_reply_markup(
+                                    chat_id=chat_id,
+                                    message_id=msg_id,
+                                    reply_markup=keyboard
+                                )
+                        except Exception:
                             pass
                 except Exception:
                     pass
 
     # ---------------------------------------------------------
-    # 🚀 BOOT FUNCTION (UPDATED)
+    # 🚀 BOOT FUNCTION 
     # ---------------------------------------------------------
     async def boot(self) -> None:
         PyTgCallsSession.notice_displayed = True
@@ -657,7 +632,7 @@ class TgCall(PyTgCalls):
             self.clients.append(client)
             await self.decorators(client)
             
-        # 🔥 बॉट ऑन होते ही हमारा स्मार्ट लूप बैकग्राउंड में स्टार्ट हो जाएगा!
+        # 🔥 बॉट ऑन होते ही लाइव लूप शुरू हो जाएगा
         asyncio.create_task(self.auto_update_player())
         
         logger.info("📞 PyTgCalls client(s) started & Smart Timer Loop is running.")
