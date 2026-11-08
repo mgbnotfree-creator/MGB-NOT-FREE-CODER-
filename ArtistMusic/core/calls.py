@@ -16,7 +16,8 @@ from pytgcalls import filters as call_filters
 from pytgcalls.pytgcalls_session import PyTgCallsSession
 
 from ArtistMusic import app, config, db, lang, logger, preload, queue, userbot, yt
-from ArtistMusic.helpers import Media, Track, buttons, thumb
+from ArtistMusic.helpers import Media, Track, thumb
+from ArtistMusic.helpers.rich_player import send_player, edit_player
 
 class PyTgCallsErrorFilter(logging.Filter):
     def filter(self, record):
@@ -34,7 +35,7 @@ class TgCall(PyTgCalls):
         self._play_next_locks = {}  
         self._stream_end_cache = {}  
         self._autoplay = defaultdict(bool)  
-        self.active_chats = set() # 🔥 Smart Timer Tracker
+        self.active_chats = set() # 🔥 Smart Tracker For Timer & Colors
 
     async def _edit_media_with_retry(self, message: Message, media_obj: InputMediaPhoto, reply_markup):
         try:
@@ -102,7 +103,7 @@ class TgCall(PyTgCalls):
         try:
             queue.clear(chat_id)
             await db.remove_call(chat_id)
-            self.active_chats.discard(chat_id) # 🔥 Remove from tracker
+            self.active_chats.discard(chat_id) # 🔥 Remove from Tracker
         except Exception:
             pass
         try:
@@ -225,60 +226,44 @@ class TgCall(PyTgCalls):
 
             if not seek_time:
                 await db.add_call(chat_id)
-                self.active_chats.add(chat_id) # 🔥 Add to tracker
-                text = _lang["play_media"].format(media.url, media.title, media.duration, media.user)
+                self.active_chats.add(chat_id)
                 
-                # 🔥 यहाँ से आपका ओरिजिनल शानदार डिज़ाइन जनरेट होगा
-                if not media.is_live and media.duration_sec:
-                    import time as time_module
-                    played = media.time
-                    duration = media.duration_sec
-                    bar_length = 12
-                    percentage = 0 if duration == 0 else min((played / duration) * 100, 100)
-                    filled = int(round(bar_length * percentage / 100))
-                    timer_bar = "—" * filled + "●" + "—" * (bar_length - filled)
-                    if duration >= 3600:
-                        played_time = time_module.strftime('%H:%M:%S', time_module.gmtime(played))
-                        total_time = time_module.strftime('%H:%M:%S', time_module.gmtime(duration))
-                    else:
-                        played_time = time_module.strftime('%M:%S', time_module.gmtime(played))
-                        total_time = time_module.strftime('%M:%S', time_module.gmtime(duration))
-                    timer_text = f"{played_time} {timer_bar} {total_time}"
-                    keyboard = buttons.controls(chat_id, timer=timer_text)
-                else:
-                    keyboard = buttons.controls(chat_id)
-
-                # 🔥 प्लेयर मैसेज को हमेशा 100% सही से दिखाने का पक्का तरीका
+                text = _lang["play_media"].format(media.url, media.title, media.duration, media.user)
+                media.player_text = text # 🔥 Loop के लिए Text को Save कर लिया
+                
+                # 🔥 यहाँ से Rich HTML Player काम करेगा (कोई buttons.controls collision नहीं)
                 if reuse_message and message is not None and int(getattr(message, "id", 0) or 0):
                     media.message_id = int(message.id)
                     try:
-                        from pyrogram.types import InputMediaPhoto
-                        await app.edit_message_media(
-                            chat_id=target_chat_for_messages,
-                            message_id=media.message_id,
-                            media=InputMediaPhoto(media=_thumb, caption=text),
-                            reply_markup=keyboard
+                        ok = await edit_player(
+                            target_chat_for_messages, media.message_id, text, media,
+                            playing=True, photo=_thumb, autoplay=self.autoplay_enabled(chat_id),
                         )
                     except Exception:
-                        pass
+                        ok = False
+                    if not ok:
+                        try:
+                            media.message_id = await send_player(
+                                target_chat_for_messages, text, photo=_thumb, media=media, playing=True, autoplay=self.autoplay_enabled(chat_id)
+                            )
+                        except Exception:
+                            pass
                 else:
                     if message:
                         try:
                             await message.delete()
                         except Exception:
                             pass
-                    sent_photo = await self._send_photo_with_retry(
-                        chat_id=target_chat_for_messages,
-                        photo=_thumb,
-                        caption=text,
-                        reply_markup=keyboard,
-                    )
-                    if sent_photo:
-                        media.message_id = sent_photo.id
-                        
+                    try:
+                        media.message_id = await send_player(
+                            target_chat_for_messages, text, photo=_thumb, media=media, playing=True, autoplay=self.autoplay_enabled(chat_id)
+                        )
+                    except Exception:
+                        pass
+                
                 try:
                     asyncio.create_task(preload.start_preload(chat_id, count=2))
-                except Exception as e:
+                except Exception:
                     pass
         except FileNotFoundError:
             if message:
@@ -555,10 +540,10 @@ class TgCall(PyTgCalls):
                         await self.stop(update.chat_id)
 
     # ---------------------------------------------------------
-    # 🚀 ORIGINAL UI LIVE UPDATER (TIMER, COLORS, AUTOPLAY)
+    # 🚀 100% PERFECT SMART LOOP FOR RICH HTML PLAYER
     # ---------------------------------------------------------
     async def auto_update_player(self):
-        """🔥 हर 5 सेकंड में आपके ओरिजिनल डिज़ाइन को रिफ्रेश करेगा!"""
+        """🔥 हर 5 सेकंड में आपके शानदार HTML प्लेयर का टाइमर और कलर रिफ्रेश करेगा!"""
         while True:
             await asyncio.sleep(5)
             for chat_id in list(self.active_chats):
@@ -567,7 +552,7 @@ class TgCall(PyTgCalls):
                     media = queue.get_current(chat_id)
                     
                     if media and playing:
-                        # टाइमर इंक्रीमेंट 
+                        # 1. टाइमर को 5 सेकंड आगे बढ़ाओ
                         if getattr(media, "duration_sec", 0) > 0:
                             if not hasattr(media, "time") or media.time is None:
                                 media.time = 1
@@ -576,45 +561,31 @@ class TgCall(PyTgCalls):
                                 media.time = media.duration_sec
                         
                         try:
+                            # 2. प्लेयर को लाइव रिफ्रेश करो
                             msg_id = getattr(media, "message_id", None)
                             
-                            # अगर मैसेज आईडी नहीं मिलती, तो हिस्ट्री से ढूँढेगा!
-                            if not msg_id:
+                            # 🔥 Text को कैच से लो, ताकि डिज़ाइन ना बिगड़े
+                            base_text = getattr(media, "player_text", "")
+                            
+                            if not msg_id or not base_text:
                                 async for message in app.get_chat_history(chat_id, limit=3):
-                                    if message.caption and ("NOW PLAYING" in message.caption or "NOW PLAYING" in message.text):
+                                    if message.text or message.caption:
                                         msg_id = message.id
                                         media.message_id = msg_id
+                                        base_text = message.text or message.caption or ""
+                                        media.player_text = base_text
                                         break
                             
-                            # 🔥 यहाँ हम सीधे आपके `buttons.controls()` को यूज़ कर रहे हैं
-                            if msg_id:
-                                from ArtistMusic.helpers import buttons
-                                import time as time_module
-                                
-                                if not getattr(media, "is_live", False) and getattr(media, "duration_sec", 0) > 0:
-                                    played = media.time
-                                    duration = media.duration_sec
-                                    bar_length = 12
-                                    percentage = 0 if duration == 0 else min((played / duration) * 100, 100)
-                                    filled = int(round(bar_length * percentage / 100))
-                                    timer_bar = "—" * filled + "●" + "—" * (bar_length - filled)
-                                    
-                                    if duration >= 3600:
-                                        played_time = time_module.strftime('%H:%M:%S', time_module.gmtime(played))
-                                        total_time = time_module.strftime('%H:%M:%S', time_module.gmtime(duration))
-                                    else:
-                                        played_time = time_module.strftime('%M:%S', time_module.gmtime(played))
-                                        total_time = time_module.strftime('%M:%S', time_module.gmtime(duration))
-                                    
-                                    timer_text = f"{played_time} {timer_bar} {total_time}"
-                                    keyboard = buttons.controls(chat_id, timer=timer_text)
-                                else:
-                                    keyboard = buttons.controls(chat_id)
-                                
-                                await app.edit_message_reply_markup(
+                            if msg_id and base_text:
+                                from ArtistMusic.helpers.rich_player import edit_player
+                                from ArtistMusic import tune
+                                await edit_player(
                                     chat_id=chat_id,
                                     message_id=msg_id,
-                                    reply_markup=keyboard
+                                    base_html=base_text,
+                                    media=media,
+                                    playing=playing,
+                                    autoplay=tune.autoplay_enabled(chat_id)
                                 )
                         except Exception:
                             pass
@@ -622,7 +593,7 @@ class TgCall(PyTgCalls):
                     pass
 
     # ---------------------------------------------------------
-    # 🚀 BOOT FUNCTION 
+    # 🚀 BOOT FUNCTION
     # ---------------------------------------------------------
     async def boot(self) -> None:
         PyTgCallsSession.notice_displayed = True
@@ -636,4 +607,4 @@ class TgCall(PyTgCalls):
         asyncio.create_task(self.auto_update_player())
         
         logger.info("📞 PyTgCalls client(s) started & Smart Timer Loop is running.")
-            
+                
