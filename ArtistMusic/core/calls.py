@@ -552,7 +552,6 @@ class TgCall(PyTgCalls):
                     media = queue.get_current(chat_id)
                     
                     if media and playing:
-                        # 1. टाइमर को 5 सेकंड आगे बढ़ाओ
                         if getattr(media, "duration_sec", 0) > 0:
                             if not hasattr(media, "time") or media.time is None:
                                 media.time = 1
@@ -561,10 +560,7 @@ class TgCall(PyTgCalls):
                                 media.time = media.duration_sec
                         
                         try:
-                            # 2. प्लेयर को लाइव रिफ्रेश करो
                             msg_id = getattr(media, "message_id", None)
-                            
-                            # 🔥 Text को कैच से लो, ताकि डिज़ाइन ना बिगड़े
                             base_text = getattr(media, "player_text", "")
                             
                             if not msg_id or not base_text:
@@ -578,14 +574,14 @@ class TgCall(PyTgCalls):
                             
                             if msg_id and base_text:
                                 from ArtistMusic.helpers.rich_player import edit_player
-                                from ArtistMusic import tune
+                                # 🔥 FIX: tune हटा दिया गया है, अब यह self.autoplay_enabled का यूज़ करेगा!
                                 await edit_player(
                                     chat_id=chat_id,
                                     message_id=msg_id,
                                     base_html=base_text,
                                     media=media,
                                     playing=playing,
-                                    autoplay=tune.autoplay_enabled(chat_id)
+                                    autoplay=self.autoplay_enabled(chat_id)
                                 )
                         except Exception:
                             pass
@@ -603,8 +599,6 @@ class TgCall(PyTgCalls):
             self.clients.append(client)
             await self.decorators(client)
             
-        # 🔥 बॉट ऑन होते ही लाइव लूप शुरू हो जाएगा
         asyncio.create_task(self.auto_update_player())
-        
         logger.info("📞 PyTgCalls client(s) started & Smart Timer Loop is running.")
-                
+        
