@@ -24,7 +24,6 @@ from pytgcalls.pytgcalls_session import PyTgCallsSession
 
 from ArtistMusic import app, config, db, lang, logger, preload, queue, userbot, yt
 from ArtistMusic.helpers import Media, Track, buttons, thumb
-from ArtistMusic.helpers._emoji import next_play_emoji
 from ArtistMusic.helpers.rich_player import send_player, edit_player
 
 class PyTgCallsErrorFilter(logging.Filter):
