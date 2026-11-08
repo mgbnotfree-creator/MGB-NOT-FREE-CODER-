@@ -8,7 +8,6 @@
 #
 # Bot          : @Yasmeen_api_bot
 # Channel      : https://t.me/MGB_CODER
-# Part 1 of 2
 # ==========================================================
 
 import asyncio
@@ -355,7 +354,6 @@ class TgCall(PyTgCalls):
                     await message.edit_text(f"❌ Playback error: {str(e)[:100]}")
                 except Exception:
                     pass
-
     async def replay(self, chat_id: int, control_message=None) -> None:
         try:
             if not await db.get_call(chat_id):
@@ -454,7 +452,7 @@ class TgCall(PyTgCalls):
                                 pass
                             await db.rm_chat(chat_id)
                         return
-
+                
                 current = queue.get_current(chat_id)
                 old_current_message_id = getattr(current, "message_id", None) if current else None
                 media = queue.get_next(chat_id)
@@ -462,7 +460,8 @@ class TgCall(PyTgCalls):
                 if not media:
                     if current and loop_mode == 0 and await db.get_autoplay(chat_id) and not getattr(current, "is_live", False):
                         try:
-                            _autoplay_msg = await app.send_message(chat_id=target_chat, text=next_play_emoji())
+                            # Using 🔄 instead of next_play_emoji to avoid import error
+                            _autoplay_msg = await app.send_message(chat_id=target_chat, text="🔄")
                             _next_track = await yt.search_related(
                                 title=getattr(current, "ytitle", None) or getattr(current, "title", ""),
                                 channel_name=getattr(current, "channel_name", None),
@@ -605,6 +604,48 @@ class TgCall(PyTgCalls):
                     ]:
                         await self.stop(update.chat_id)
 
+    # ---------------------------------------------------------
+    # 🚀 SMART AUTO-UPDATER LOOP (NEW DYNAMIC PLAYER)
+    # ---------------------------------------------------------
+    async def auto_update_player(self):
+        """यह बैकग्राउंड में हर 5 सेकंड में घूमेगा और कलर्स, टाइमर व ऑटोप्ले अपडेट करेगा!"""
+        while True:
+            await asyncio.sleep(5)
+            try:
+                # db.active_calls में वो सारे ग्रुप्स होते हैं जहाँ गाना चल रहा है
+                for chat_id in list(db.active_calls):
+                    playing = await db.playing(chat_id)
+                    media = queue.get_current(chat_id)
+                    
+                    if media and playing:
+                        # 1. टाइमर को 5 सेकंड आगे बढ़ाओ (00:01 -> 00:06)
+                        if getattr(media, "time", None) is not None and getattr(media, "duration_sec", 0) > 0:
+                            media.time += 5
+                            if media.time > media.duration_sec:
+                                media.time = media.duration_sec
+                        
+                        # 2. प्लेयर के कलर्स, टाइमर और ऑटोप्ले बटन को रिफ्रेश करो!
+                        try:
+                            from ArtistMusic.helpers.rich_player import edit_player
+                            autoplay_state = bool(await db.get_autoplay(chat_id))
+                            
+                            await edit_player(
+                                chat_id=chat_id,
+                                message_id=getattr(media, "message_id", None),
+                                text=None,
+                                media=media,
+                                playing=playing,
+                                photo=None,
+                                autoplay=autoplay_state
+                            )
+                        except Exception as e:
+                            pass
+            except Exception:
+                pass
+
+    # ---------------------------------------------------------
+    # 🚀 BOOT FUNCTION (UPDATED)
+    # ---------------------------------------------------------
     async def boot(self) -> None:
         PyTgCallsSession.notice_displayed = True
         for ub in userbot.clients:
@@ -612,5 +653,9 @@ class TgCall(PyTgCalls):
             await client.start()
             self.clients.append(client)
             await self.decorators(client)
-        logger.info("📞 PyTgCalls client(s) started.")
-                            
+            
+        # 🔥 बॉट ऑन होते ही हमारा स्मार्ट लूप स्टार्ट हो जाएगा!
+        asyncio.create_task(self.auto_update_player())
+        
+        logger.info("📞 PyTgCalls client(s) started & Smart Timer Loop is running.")
+        
