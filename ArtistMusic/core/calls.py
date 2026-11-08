@@ -17,7 +17,6 @@ from pytgcalls.pytgcalls_session import PyTgCallsSession
 
 from ArtistMusic import app, config, db, lang, logger, preload, queue, userbot, yt
 from ArtistMusic.helpers import Media, Track, thumb
-from ArtistMusic.helpers.rich_player import send_player, edit_player
 
 class PyTgCallsErrorFilter(logging.Filter):
     def filter(self, record):
@@ -35,7 +34,7 @@ class TgCall(PyTgCalls):
         self._play_next_locks = {}  
         self._stream_end_cache = {}  
         self._autoplay = defaultdict(bool)  
-        self.active_chats = set() # 🔥 Smart Tracker For Timer & Colors
+        self.active_chats = set()
 
     async def _edit_media_with_retry(self, message: Message, media_obj: InputMediaPhoto, reply_markup):
         try:
@@ -103,7 +102,7 @@ class TgCall(PyTgCalls):
         try:
             queue.clear(chat_id)
             await db.remove_call(chat_id)
-            self.active_chats.discard(chat_id) # 🔥 Remove from Tracker
+            self.active_chats.discard(chat_id)
         except Exception:
             pass
         try:
@@ -229,9 +228,10 @@ class TgCall(PyTgCalls):
                 self.active_chats.add(chat_id)
                 
                 text = _lang["play_media"].format(media.url, media.title, media.duration, media.user)
-                media.player_text = text # 🔥 Loop के लिए Text को Save कर लिया
+                media.player_text = text 
                 
-                # 🔥 यहाँ से Rich HTML Player काम करेगा (कोई buttons.controls collision नहीं)
+                from ArtistMusic.helpers.rich_player import send_player, edit_player
+                
                 if reuse_message and message is not None and int(getattr(message, "id", 0) or 0):
                     media.message_id = int(message.id)
                     try:
@@ -404,9 +404,10 @@ class TgCall(PyTgCalls):
                 media = queue.get_next(chat_id)
 
                 if not media:
+                    # 🔥 FIX: अब इंजन डायरेक्ट UI बटन के स्टेट से जुड़ा है
                     if current and loop_mode == 0 and self.autoplay_enabled(chat_id) and not getattr(current, "is_live", False):
                         try:
-                            _autoplay_msg = await app.send_message(chat_id=target_chat, text="🔄")
+                            _autoplay_msg = await app.send_message(chat_id=target_chat, text="🔄 Searching Autoplay Track...")
                             _next_track = await yt.search_related(
                                 title=getattr(current, "ytitle", None) or getattr(current, "title", ""),
                                 channel_name=getattr(current, "channel_name", None),
@@ -493,14 +494,19 @@ class TgCall(PyTgCalls):
                 except Exception:
                     pass
 
+    # ---------------------------------------------------------
+    # 🚀 AUTOPLAY STATUS LINKED TO UI BUTTON
+    # ---------------------------------------------------------
     async def set_autoplay(self, chat_id: int, enabled: bool | None = None) -> bool:
+        from ArtistMusic.helpers.rich_player import _PLAYER_AUTOPLAY
         if enabled is None:
-            enabled = not self._autoplay.get(chat_id, False)
-        self._autoplay[chat_id] = bool(enabled)
+            enabled = not _PLAYER_AUTOPLAY.get(chat_id, False)
+        _PLAYER_AUTOPLAY[chat_id] = bool(enabled)
         return bool(enabled)
 
     def autoplay_enabled(self, chat_id: int) -> bool:
-        return bool(self._autoplay.get(chat_id, False))
+        from ArtistMusic.helpers.rich_player import _PLAYER_AUTOPLAY
+        return bool(_PLAYER_AUTOPLAY.get(chat_id, False))
 
     async def ping(self) -> float:
         pings = [client.ping for client in self.clients]
@@ -538,11 +544,11 @@ class TgCall(PyTgCalls):
                         types.ChatUpdate.Status.CLOSED_VOICE_CHAT,
                     ]:
                         await self.stop(update.chat_id)
+
     # ---------------------------------------------------------
-    # 🚀 100% PERFECT REAL-TIME LOOP (सॉन्ग के साथ-साथ चलेगा)
+    # 🚀 REAL-TIME TIMER LOOP (NO FREEZE)
     # ---------------------------------------------------------
     async def auto_update_player(self):
-        """🔥 यह टाइमर अब लूप की स्पीड पर नहीं, असली घड़ी (Real Time) पर चलता है!"""
         import time as time_mod
         while True:
             await asyncio.sleep(5)
@@ -554,19 +560,15 @@ class TgCall(PyTgCalls):
                     if media:
                         if getattr(media, "duration_sec", 0) > 0:
                             now = time_mod.time()
-                            
-                            # अगर नया गाना है, तो उसका स्टार्ट टाइम सेव करो
                             if not hasattr(media, "real_start_time"):
                                 media.real_start_time = now - getattr(media, "time", 0)
                                 media.is_paused = not playing
                             
                             if playing:
-                                # अगर गाना अभी-अभी Pause से Resume हुआ है
                                 if getattr(media, "is_paused", False):
                                     media.real_start_time = now - getattr(media, "time", 0)
                                     media.is_paused = False
                                 
-                                # एकदम सटीक घड़ी के हिसाब से टाइम सेट करो
                                 media.time = now - media.real_start_time
                                 if media.time > media.duration_sec:
                                     media.time = media.duration_sec
@@ -601,9 +603,6 @@ class TgCall(PyTgCalls):
                 except Exception:
                     pass
 
-    # ---------------------------------------------------------
-    # 🚀 BOOT FUNCTION
-    # ---------------------------------------------------------
     async def boot(self) -> None:
         PyTgCallsSession.notice_displayed = True
         for ub in userbot.clients:
@@ -614,4 +613,4 @@ class TgCall(PyTgCalls):
             
         asyncio.create_task(self.auto_update_player())
         logger.info("📞 PyTgCalls client(s) started & Smart Timer Loop is running.")
-                                        
+            
