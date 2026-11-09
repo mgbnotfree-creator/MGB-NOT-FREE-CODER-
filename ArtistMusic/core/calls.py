@@ -10,7 +10,7 @@ import random
 import time as time_mod
 from collections import defaultdict
 
-# 🔥 PYTHON 3.14 FIX: PyTgCalls इम्पोर्ट होने से पहले Event Loop बनाना ज़रूरी है!
+# 🔥 PYTHON 3.14 EVENT LOOP FIX
 try:
     asyncio.get_running_loop()
 except RuntimeError:
@@ -71,26 +71,12 @@ class TgCall(PyTgCalls):
     async def _edit_media_with_retry(self, message: Message, media_obj: InputMediaPhoto, reply_markup):
         try:
             return await message.edit_media(media=media_obj, reply_markup=reply_markup)
-        except errors.FloodWait as fw:
-            await asyncio.sleep(fw.value + 1)
-            try:
-                return await message.edit_media(media=media_obj, reply_markup=reply_markup)
-            except Exception:
-                return None
-        except errors.MessageNotModified:
-            return None
         except Exception:
             return None
 
     async def _send_photo_with_retry(self, chat_id: int, photo, caption: str, reply_markup):
         try:
             return await app.send_photo(chat_id=chat_id, photo=photo, caption=caption, reply_markup=reply_markup)
-        except errors.FloodWait as fw:
-            await asyncio.sleep(fw.value + 1)
-            try:
-                return await app.send_photo(chat_id=chat_id, photo=photo, caption=caption, reply_markup=reply_markup)
-            except Exception:
-                return None
         except Exception:
             return None
 
@@ -103,12 +89,6 @@ class TgCall(PyTgCalls):
             if media:
                 media._paused_at = time_mod.time()
             return True
-        except (ConnectionNotFound, exceptions.NotInCallError):
-            await db.playing(chat_id, paused=False)
-            await db.remove_call(chat_id)
-            queue.clear(chat_id)
-            self.active_chats.discard(chat_id)
-            return False
         except Exception:
             await db.playing(chat_id, paused=False)
             return False
@@ -124,12 +104,6 @@ class TgCall(PyTgCalls):
                 media._start_clock = getattr(media, "_start_clock", time_mod.time()) + paused_duration
                 media._paused_at = None
             return True
-        except (ConnectionNotFound, exceptions.NotInCallError):
-            await db.playing(chat_id, paused=False)
-            await db.remove_call(chat_id)
-            queue.clear(chat_id)
-            self.active_chats.discard(chat_id)
-            return False
         except Exception:
             return False
 
@@ -149,8 +123,6 @@ class TgCall(PyTgCalls):
         try:
             await client.leave_call(chat_id, close=False)
             await asyncio.sleep(0.5)
-        except (ConnectionNotFound, exceptions.NotInCallError):
-            pass
         except Exception:
             pass
     async def play_media(
@@ -179,7 +151,7 @@ class TgCall(PyTgCalls):
             if message_chat_id is not None:
                 try:
                     chat = await app.get_chat(chat_id)
-                except errors.RPCError:
+                except Exception:
                     chat = None
             if chat is not None and chat.type == enums.ChatType.CHANNEL:
                 userbot_client = await db.get_client(chat_id)
@@ -194,19 +166,8 @@ class TgCall(PyTgCalls):
                             await message.edit_text("❌ Assistant is banned in this channel.")
                         await db.set_cmode(chat_id, None)
                         return
-                except errors.RPCError as e:
-                    if "CHANNEL_INVALID" in str(e) or "USER_NOT_PARTICIPANT" in str(e):
-                        if message:
-                            await message.edit_text("❌ <b>Assistant not in channel!</b>")
-                        await db.set_cmode(chat_id, None)
-                        return
-        except errors.RPCError as e:
-            if "CHANNEL_INVALID" in str(e):
-                if message:
-                    await message.edit_text("❌ Invalid channel. Disabling channel play.")
-                await db.set_cmode(chat_id, None)  
-                return
-            raise
+                except Exception:
+                    pass
 
         if seek_time > 1:
             ffmpeg_params = f"-ss {seek_time} -probesize 2M -analyzeduration 1M -rtbufsize 2M -fflags +genpts+igndts"
@@ -232,24 +193,10 @@ class TgCall(PyTgCalls):
                 try:
                     await client.play(chat_id=chat_id, stream=stream, config=types.GroupCallConfig(auto_start=True))
                     break
-                except (exceptions.NoActiveGroupCall, errors.RPCError) as e:
-                    error_msg = str(e)
-                    if "GROUPCALL_INVALID" in error_msg or "GROUPCALL" in error_msg or isinstance(e, exceptions.NoActiveGroupCall):
-                        if attempt < max_retries - 1:
-                            await asyncio.sleep(retry_delays[attempt + 1])
-                            continue
-                        raise
-                    raise
-                except Exception as e:
-                    error_msg = str(e).lower()
-                    if "cannot be initialized more than once" in error_msg or "connection" in error_msg:
-                        if attempt < max_retries - 1:
-                            try:
-                                await client.leave_call(chat_id, close=False)
-                            except Exception:
-                                pass
-                            await asyncio.sleep(retry_delays[attempt + 1])
-                            continue
+                except Exception:
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delays[attempt + 1])
+                        continue
                     raise
 
             if config.THUMB_GEN and isinstance(media, Track):
@@ -309,35 +256,6 @@ class TgCall(PyTgCalls):
                     asyncio.create_task(preload.start_preload(chat_id, count=2))
                 except Exception:
                     pass
-        except FileNotFoundError:
-            if message:
-                try:
-                    await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
-                except Exception:
-                    pass
-            await self.play_next(chat_id)
-        except exceptions.NoActiveGroupCall:
-            await self.stop(chat_id)
-            if message:
-                try:
-                    await message.edit_text(_lang["error_vc_disabled"])
-                except Exception:
-                    pass
-        except errors.RPCError:
-            await self.stop(chat_id)
-        except exceptions.NoAudioSourceFound:
-            if message:
-                try:
-                    await message.edit_text(_lang["error_no_audio"])
-                except Exception:
-                    pass
-            await self.play_next(chat_id)
-        except (ConnectionNotFound, TelegramServerError):
-            await self.stop(chat_id)
-        except TimeoutError:
-            await self.stop(chat_id)
-            await asyncio.sleep(2)
-            await self.play_next(chat_id)
         except Exception:
             await self.stop(chat_id)
 
@@ -396,29 +314,50 @@ class TgCall(PyTgCalls):
         except Exception:
             return False
     async def _fetch_autoplay_track(self, current) -> Track | None:
-        """🔥 4-Layer Guaranteed Autoplay Finder"""
-        exclude_id = getattr(current, "id", None) if current else None
+        """🔥 Strict No-Repeat Autoplay Finder (कभी भी गाना रिपीट नहीं होगा)"""
+        if not hasattr(self, "_played_history"):
+            self._played_history = {}
+            
+        chat_id = getattr(current, "chat_id", None) or 0
+        history = self._played_history.get(chat_id, [])
+        
+        # वर्तमान और पिछले 25 गानों की आईडी को पूरी तरह ब्लॉक कर दो ताकि रिपीट न हो!
+        exclude_ids = {str(getattr(current, "id", ""))}
+        for hid in history[-25:]:
+            exclude_ids.add(str(hid))
+            
         base_title = (getattr(current, "ytitle", None) or getattr(current, "title", "") if current else "").strip()
         channel = getattr(current, "channel_name", None) if current else None
+
+        queries = [
+            f"{base_title} audio song remix" if base_title else "Latest Bollywood Hits",
+            f"{channel} live jukebox audio" if channel else "Trending Punjabi Songs",
+            random.choice([
+                "Top 10 Bollywood Romantic Songs Audio", 
+                "Arijit Singh Non Stop Melodies", 
+                "Yo Yo Honey Singh Party Anthems", 
+                "Latest LoFi Mashup Songs Audio",
+                "New Trending Indian Pop Songs",
+                "Superhit Hindi Songs Audio Jukebox"
+            ])
+        ]
 
         if hasattr(yt, "search_related") and base_title:
             try:
                 res = await asyncio.wait_for(
-                    yt.search_related(title=base_title, channel_name=channel, exclude_id=exclude_id),
+                    yt.search_related(title=base_title, channel_name=channel, exclude_id=list(exclude_ids)[0] if exclude_ids else None),
                     timeout=10.0,
                 )
                 if res:
-                    cand = res[0] if isinstance(res, list) else res
-                    if getattr(cand, "id", None) and getattr(cand, "id", None) != exclude_id:
-                        return cand
+                    items = res if isinstance(res, list) else [res]
+                    for item in items:
+                        vid = str(getattr(item, "id", ""))
+                        if vid and vid not in exclude_ids:
+                            self._record_history(chat_id, vid, history)
+                            return item
             except Exception:
                 pass
 
-        queries = [
-            f"{base_title} song" if base_title else "Latest Bollywood Songs",
-            f"{channel} songs" if channel else "Hindi Hit Songs",
-            random.choice(["Arijit Singh Hit Songs", "Atif Aslam Hit Songs", "Bollywood Romantic Songs", "Punjabi Hit Songs"]),
-        ]
         for method_name in ("search", "track"):
             fn = getattr(yt, method_name, None)
             if callable(fn):
@@ -428,7 +367,9 @@ class TgCall(PyTgCalls):
                         if res:
                             items = res if isinstance(res, list) else [res]
                             for item in items:
-                                if getattr(item, "id", None) and getattr(item, "id", None) != exclude_id:
+                                vid = str(getattr(item, "id", ""))
+                                if vid and vid not in exclude_ids:
+                                    self._record_history(chat_id, vid, history)
                                     return item
                     except Exception:
                         pass
@@ -437,14 +378,15 @@ class TgCall(PyTgCalls):
             try:
                 mod = __import__(mod_name, fromlist=["VideosSearch"])
                 VideosSearch = getattr(mod, "VideosSearch")
-                search = VideosSearch(queries[0], limit=5)
+                search = VideosSearch(random.choice(queries), limit=15)
                 res_data = await asyncio.wait_for(search.next(), timeout=10.0)
                 for r in res_data.get("result", []):
-                    vid = r.get("id")
-                    if vid and vid != exclude_id:
+                    vid = str(r.get("id"))
+                    if vid and vid not in exclude_ids:
                         dur_str = r.get("duration") or "03:30"
                         parts = [int(p) for p in dur_str.split(":")] if ":" in dur_str else [3, 30]
                         dur_sec = parts[0] * 60 + parts[1] if len(parts) == 2 else 210
+                        self._record_history(chat_id, vid, history)
                         return Track(
                             id=vid,
                             channel_name=r.get("channel", {}).get("name", "YouTube"),
@@ -459,6 +401,12 @@ class TgCall(PyTgCalls):
                 pass
 
         return None
+
+    def _record_history(self, chat_id: int, vid: str, history: list):
+        history.append(vid)
+        if len(history) > 30:
+            history.pop(0)
+        self._played_history[chat_id] = history
 
     async def play_next(self, chat_id: int, control_message=None, force_new_message: bool = False) -> None:
         if chat_id not in self._play_next_locks:
@@ -678,4 +626,4 @@ class TgCall(PyTgCalls):
             
         asyncio.create_task(self.auto_update_player())
         logger.info("📞 PyTgCalls client(s) started & 1s Watchdog Timer Loop is running.")
-                        
+        
