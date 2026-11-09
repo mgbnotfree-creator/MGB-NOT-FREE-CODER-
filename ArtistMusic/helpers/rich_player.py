@@ -8,12 +8,15 @@ from typing import Optional
 import aiohttp
 import asyncio
 
+from pyrogram import filters
 from ArtistMusic import app, config, db
 
 _PLAYER_PHOTOS: dict[tuple[int, int], str] = {}
 _PLAYER_MEDIA: dict[tuple[int, int], str] = {}
 _PLAYER_LOCKS: dict[tuple[int, int], object] = {}
-_PLAYER_AUTOPLAY: dict[int, bool] = {} 
+_PLAYER_AUTOPLAY: dict[int, bool] = {}
+_PLAYER_LAST_TEXT: dict[int, str] = {}
+_PLAYER_LAST_MSG: dict[int, int] = {}
 
 def _api(method: str) -> str:
     return f"https://api.telegram.org/bot{config.BOT_TOKEN}/{method}"
@@ -33,42 +36,77 @@ def _youtube_thumb(media) -> Optional[str]:
         return f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
     return None
 
-def _parse_duration(media) -> int:
-    """🔥 अगर duration_sec न मिले, तो '03:30' टेक्स्ट से सेकंड्स निकाल लेगा!"""
+def _str_to_sec(val: str) -> int:
+    val = str(val or "").strip()
+    if not val or ":" not in val:
+        return 0
+    try:
+        parts = [int(p) for p in val.split(":")]
+        if len(parts) == 2:
+            return parts[0] * 60 + parts[1]
+        if len(parts) == 3:
+            return parts[0] * 3600 + parts[1] * 60 + parts[2]
+    except Exception:
+        pass
+    return 0
+
+def _parse_duration(media, timer_str: Optional[str] = None) -> int:
     dur = int(getattr(media, "duration_sec", 0) or 0)
     if dur > 0:
         return dur
-    dur_str = str(getattr(media, "duration", "") or "").strip()
-    if ":" in dur_str:
-        try:
-            parts = [int(p) for p in dur_str.split(":")]
-            if len(parts) == 2:
-                return parts[0] * 60 + parts[1]
-            elif len(parts) == 3:
-                return parts[0] * 3600 + parts[1] * 60 + parts[2]
-        except Exception:
-            pass
+    dur = _str_to_sec(getattr(media, "duration", ""))
+    if dur > 0:
+        return dur
+    if timer_str:
+        matches = re.findall(r"\b\d{1,2}:\d{2}(?::\d{2})?\b", str(timer_str))
+        if len(matches) >= 2:
+            return _str_to_sec(matches[-1])
     return 0
+
+def _get_exact_played(media, duration: int, timer_str: Optional[str] = None) -> int:
+    """🔥 हमेशा असली घड़ी या पास किए गए टाइम से सटीक सेकंड निकालेगा!"""
+    start_clock = getattr(media, "_start_clock", None)
+    if start_clock is not None:
+        if getattr(media, "_paused_at", None):
+            played = int(media._paused_at - start_clock)
+        else:
+            played = int(time.time() - start_clock)
+    elif timer_str:
+        matches = re.findall(r"\b\d{1,2}:\d{2}(?::\d{2})?\b", str(timer_str))
+        if matches:
+            played = _str_to_sec(matches[0])
+        else:
+            played = int(float(getattr(media, "time", 0) or 0))
+    else:
+        played = int(float(getattr(media, "time", 0) or 0))
+
+    if duration > 0:
+        return max(0, min(played, duration))
+    return max(0, played)
 
 def _time(sec: int, duration: int) -> str:
     sec = max(0, int(sec or 0))
     return time.strftime("%H:%M:%S" if duration >= 3600 else "%M:%S", time.gmtime(sec))
 
 def progress_text(media, timer: Optional[str] = None) -> str:
-    duration = _parse_duration(media)
+    """🔥 बाहरी नकली डॉट को इग्नोर करेगा और 100% टाइम के हिसाब से ▶ खिसकाएगा!"""
+    duration = _parse_duration(media, timer)
     if duration <= 0:
-        return timer or "LIVE"
+        return "LIVE"
     
-    played = max(0, min(int(float(getattr(media, "time", 0) or 0)), duration))
-    
-    # 🔥 100% सटीक डॉट (●) पोजिशन कैलकुलेशन (0 से 12 स्टेप्स)
+    played = _get_exact_played(media, duration, timer)
+    if media is not None:
+        media.time = played
+        media.duration_sec = duration
+
     n = 12
     ratio = played / duration if duration > 0 else 0.0
-    filled = min(n, max(0, int(ratio * n)))
-    if played >= duration - 2:
+    filled = int(round(ratio * n))
+    filled = max(0, min(n, filled))
+    if played >= duration - 1:
         filled = n
         
-    bar = "—" * filled + "●" + "—" * (n - filled)
+    bar = "—" * filled + "▶" + "—" * (n - filled)
     return f"{_time(played, duration)} {bar} {_time(duration, duration)}"
 
 def _clean_base_html(base_html: str) -> str:
@@ -88,7 +126,14 @@ def _styles(playing: bool):
     )
     return palettes[phase]
 
-def get_player_html(chat_id: int, media, playing: bool = True, autoplay: bool = False, timer: Optional[str] = None) -> str:
+def controls_html(chat_id: int, media, *, timer: Optional[str] = None,
+                  playing: bool = True, remove: bool = False, queue_mode: bool = False,
+                  autoplay: Optional[bool] = None) -> str:
+    if remove:
+        return ""
+    return get_player_html(chat_id, media, playing=playing, autoplay=autoplay, timer=timer)
+
+def get_player_html(chat_id: int, media, playing: bool = True, autoplay: Optional[bool] = None, timer: Optional[str] = None) -> str:
     time_style, replay_style, state_style, queue_style = _styles(playing)
     
     state = "pause" if playing else "resume"
@@ -96,8 +141,10 @@ def get_player_html(chat_id: int, media, playing: bool = True, autoplay: bool = 
     
     p = html.escape(progress_text(media, timer))
     
-    ap_label = "AUTOPLAY | ON" if autoplay else "AUTOPLAY | OFF"
-    ap_style = "success" if autoplay else "danger"
+    # 🔥 हमेशा _PLAYER_AUTOPLAY से असली स्टेट पढ़ेगा!
+    real_ap = bool(_PLAYER_AUTOPLAY.get(int(chat_id), False))
+    ap_label = "AUTOPLAY | ON" if real_ap else "AUTOPLAY | OFF"
+    ap_style = "success" if real_ap else "danger"
     
     return (
         f'<tg-button-row align="center">'
@@ -140,11 +187,12 @@ def _format_player_card(base_html: str) -> str:
         return f'<blockquote>{header}</blockquote><blockquote>{details}</blockquote>'
     return f'<blockquote>{clean}</blockquote>' if clean else ""
 
-def rich_html(base_html: str, chat_id: int, media, *, timer=None, playing=True, remove=False, queue_mode=False, autoplay=False) -> str:
+def rich_html(base_html: str, chat_id: int, media, *, timer=None, playing=True, remove=False, queue_mode=False, autoplay=None) -> str:
     clean = _format_player_card(base_html)
     if remove:
         return clean
-    return f"{clean}\n\n{get_player_html(chat_id, media, playing, autoplay, timer=timer)}"
+    real_ap = bool(_PLAYER_AUTOPLAY.get(int(chat_id), False))
+    return f"{clean}\n\n{get_player_html(chat_id, media, playing, real_ap, timer=timer)}"
 
 async def _request(method: str, data: dict, file_path: Optional[str] = None) -> dict:
     timeout = aiohttp.ClientTimeout(total=90)
@@ -192,12 +240,14 @@ def _cache_message_media(chat_id, message_id, result, fallback):
         _PLAYER_MEDIA[(chat_id, message_id)] = fallback
 
 async def send_player(chat_id: int, base_html: str, photo=None, media=None, reply_to_message_id=None, *, playing=True, queue_mode=False, autoplay=None, **kwargs) -> int:
-    if autoplay is not None:
-        _PLAYER_AUTOPLAY[chat_id] = bool(autoplay)
-    else:
-        autoplay = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
+    chat_id = int(chat_id)
+    if base_html:
+        _PLAYER_LAST_TEXT[chat_id] = base_html
+    if media is not None and not getattr(media, "_start_clock", None):
+        media._start_clock = time.time()
 
-    player_html = rich_html(base_html, chat_id, media, playing=playing, queue_mode=queue_mode, autoplay=autoplay)
+    real_ap = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
+    player_html = rich_html(base_html, chat_id, media, playing=playing, queue_mode=queue_mode, autoplay=real_ap)
     ref = _photo_source(chat_id, 0, media, photo)
     rich = {"html": player_html}
     if ref:
@@ -211,18 +261,19 @@ async def send_player(chat_id: int, base_html: str, photo=None, media=None, repl
         result = await _request("sendRichMessage", data)
         msg = result["result"]
         mid = int(msg["message_id"])
+        _PLAYER_LAST_MSG[chat_id] = mid
         _cache_message_media(chat_id, mid, result, ref)
         return mid
     except Exception:
         sent = await app.send_message(chat_id=chat_id, text=player_html)
+        _PLAYER_LAST_MSG[chat_id] = sent.id
         return sent.id
 
 async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, timer=None, playing=True, remove=False, photo=None, autoplay=None) -> bool:
+    chat_id = int(chat_id)
+    message_id = int(message_id)
     key = (chat_id, message_id)
-    if autoplay is not None:
-        _PLAYER_AUTOPLAY[chat_id] = bool(autoplay)
-    else:
-        autoplay = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
+    real_ap = bool(_PLAYER_AUTOPLAY.get(chat_id, False))
 
     if remove:
         try:
@@ -233,8 +284,10 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
         _PLAYER_MEDIA.pop(key, None)
         return True
 
-    if not base_html and media:
-        base_html = getattr(media, "player_text", "")
+    if base_html:
+        _PLAYER_LAST_TEXT[chat_id] = base_html
+    else:
+        base_html = getattr(media, "player_text", "") or _PLAYER_LAST_TEXT.get(chat_id, "")
 
     lock = _PLAYER_LOCKS.get(key)
     if lock is None:
@@ -243,7 +296,7 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
 
     async with lock:
         ref = _photo_source(chat_id, message_id, media, photo)
-        body = rich_html(base_html, chat_id, media, timer=timer, playing=playing, autoplay=autoplay)
+        body = rich_html(base_html, chat_id, media, timer=timer, playing=playing, autoplay=real_ap)
         rich = {"html": body}
         if ref:
             rich["html"] = f'<img src="tg://photo?id=player_cover"/>\n{body}'
@@ -267,7 +320,7 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
                 try:
                     rich["html"] = f'<img src="tg://photo?id=player_cover"/>\n{body}'
                     rich["media"] = [{"id": "player_cover", "media": {"type": "photo", "media": cached}}]
-                    result = await _request("editMessageText", {
+                    await _request("editMessageText", {
                         "chat_id": chat_id,
                         "message_id": message_id,
                         "rich_message": rich,
@@ -276,4 +329,56 @@ async def edit_player(chat_id: int, message_id: int, base_html: str, media, *, t
                 except Exception:
                     pass
             return False
+
+async def edit_rich_message(message, text, markup=None, photo_file_id=None, **kwargs):
+    chat_id = int(message.chat.id)
+    message_id = int(message.id)
+    media = kwargs.get("media")
+    if media is None:
+        try:
+            from ArtistMusic import queue
+            media = queue.get_current(chat_id)
+        except Exception:
+            media = None
+    if media is not None:
+        return await edit_player(chat_id, message_id, text, media,
+                                 timer=kwargs.get("timer"),
+                                 playing=kwargs.get("playing", True),
+                                 remove=kwargs.get("remove", False),
+                                 photo=photo_file_id)
+    return False
+
+async def send_rich_message(chat_id: int, text: str, reply_markup=None, photo=None, media=None, reply_to_message_id=None, **kwargs):
+    return await send_player(chat_id, text, photo=photo, media=media, reply_to_message_id=reply_to_message_id, **kwargs)
+
+async def edit_player_message(chat_id, message_id, base_html, media, *args, **kwargs):
+    return await edit_player(chat_id, message_id, base_html, media,
+                             timer=kwargs.get("timer"),
+                             playing=kwargs.get("playing", True),
+                             remove=kwargs.get("remove", False),
+                             photo=kwargs.get("photo"))
+
+# 🚀 PRIORITY -1 INTERCEPTOR: यह किसी भी पुराने callback से पहले चलेगा और बटन को 100% ON/OFF करेगा!
+@app.on_callback_query(filters.regex(r"autoplay"), group=-1)
+async def _master_autoplay_interceptor(client, query):
+    try:
+        parts = query.data.split()
+        chat_id = int(parts[-1]) if len(parts) > 1 and parts[-1].lstrip("-").isdigit() else int(query.message.chat.id)
+        new_state = not bool(_PLAYER_AUTOPLAY.get(chat_id, False))
+        _PLAYER_AUTOPLAY[chat_id] = new_state
+        
+        try:
+            await query.answer(f"♾ Autoplay: {'ON' if new_state else 'OFF'}", show_alert=False)
+        except Exception:
+            pass
             
+        from ArtistMusic import queue
+        media = queue.get_current(chat_id)
+        if media:
+            base_text = getattr(media, "player_text", "") or _PLAYER_LAST_TEXT.get(chat_id, "")
+            playing = await db.playing(chat_id)
+            await edit_player(int(query.message.chat.id), int(query.message.id), base_text, media, playing=playing, autoplay=new_state)
+        query.stop_propagation()
+    except Exception:
+        pass
+    
