@@ -6,10 +6,11 @@
 
 import asyncio
 import logging
+import random
 import time as time_mod
 from collections import defaultdict
 from ntgcalls import ConnectionNotFound, TelegramServerError
-from pyrogram import enums, errors, filters
+from pyrogram import enums, errors
 from pyrogram.errors import MessageIdInvalid
 from pyrogram.types import InputMediaPhoto, Message
 from pytgcalls import PyTgCalls, exceptions, types
@@ -18,7 +19,13 @@ from pytgcalls.pytgcalls_session import PyTgCallsSession
 
 from ArtistMusic import app, config, db, lang, logger, preload, queue, userbot, yt
 from ArtistMusic.helpers import Media, Track, thumb
-from ArtistMusic.helpers.rich_player import _PLAYER_AUTOPLAY, _parse_duration, edit_player, send_player
+from ArtistMusic.helpers.rich_player import (
+    _PLAYER_AUTOPLAY,
+    _get_exact_played,
+    _parse_duration,
+    edit_player,
+    send_player,
+)
 
 class PyTgCallsErrorFilter(logging.Filter):
     def filter(self, record):
@@ -35,7 +42,8 @@ class TgCall(PyTgCalls):
         self.clients = []
         self._play_next_locks = {}  
         self._stream_end_cache = {}  
-        self._autoplay = _PLAYER_AUTOPLAY  # 🔥 दोनों डिक्शनरी को एक ही बना दिया!
+        self._autoplay = _PLAYER_AUTOPLAY
+        self._last_played = {}  # 🔥 गाना खत्म होने पर भी याद रखेगा कि कौन सा गाना बज रहा था!
         self.active_chats = set()
 
     async def _edit_media_with_retry(self, message: Message, media_obj: InputMediaPhoto, reply_markup):
@@ -71,7 +79,7 @@ class TgCall(PyTgCalls):
             await db.playing(chat_id, paused=True)
             media = queue.get_current(chat_id)
             if media:
-                media.is_paused = True
+                media._paused_at = time_mod.time()
             return True
         except (ConnectionNotFound, exceptions.NotInCallError):
             await db.playing(chat_id, paused=False)
@@ -89,9 +97,10 @@ class TgCall(PyTgCalls):
             await client.resume(chat_id)
             await db.playing(chat_id, paused=False)
             media = queue.get_current(chat_id)
-            if media:
-                media.real_start_time = time_mod.time() - float(getattr(media, "time", 0) or 0)
-                media.is_paused = False
+            if media and getattr(media, "_paused_at", None):
+                paused_duration = time_mod.time() - media._paused_at
+                media._start_clock = getattr(media, "_start_clock", time_mod.time()) + paused_duration
+                media._paused_at = None
             return True
         except (ConnectionNotFound, exceptions.NotInCallError):
             await db.playing(chat_id, paused=False)
@@ -112,6 +121,7 @@ class TgCall(PyTgCalls):
             queue.clear(chat_id)
             await db.remove_call(chat_id)
             self.active_chats.discard(chat_id)
+            self._last_played.pop(chat_id, None)
         except Exception:
             pass
         try:
@@ -226,18 +236,19 @@ class TgCall(PyTgCalls):
                 except Exception:
                     _thumb = config.DEFAULT_THUMB
 
-            # 🔥 हर बार गाना शुरू होने या Replay/Seek होने पर असली घड़ी रीसेट करो!
+            # 🔥 100% EXACT CLOCK RESET & SAVE LAST PLAYED FOR AUTOPLAY
             now = time_mod.time()
-            media.time = seek_time if seek_time else 1
-            media.real_start_time = now - media.time
-            media.is_paused = False
+            media.time = seek_time if seek_time else 0
+            media._start_clock = now - media.time
+            media._paused_at = None
             media._auto_ended = False
             media.target_chat_id = target_chat_for_messages
-            if not getattr(media, "duration_sec", 0):
-                media.duration_sec = _parse_duration(media)
+            media.duration_sec = _parse_duration(media)
+            self._last_played[chat_id] = media  # 🔥 ऑटोप्ले के लिए गाना सेव कर लिया!
 
             if not seek_time:
                 await db.add_call(chat_id)
+                await db.playing(chat_id, paused=False)
                 self.active_chats.add(chat_id)
                 
                 text = _lang["play_media"].format(media.url, media.title, media.duration, media.user)
@@ -321,7 +332,10 @@ class TgCall(PyTgCalls):
                         message_chat_id = group_id
             except Exception:
                 pass
-            media = queue.get_current(chat_id)
+            media = queue.get_current(chat_id) or self._last_played.get(chat_id)
+            if media:
+                media.time = 0
+                media._start_clock = time_mod.time()
             _lang = await lang.get_lang(chat_id)
             target_chat = message_chat_id if message_chat_id else chat_id
             msg = control_message or await app.send_message(chat_id=target_chat, text=_lang["play_again"])
@@ -347,7 +361,7 @@ class TgCall(PyTgCalls):
             except Exception:
                 pass
             media.time = seconds
-            media.real_start_time = time_mod.time() - seconds
+            media._start_clock = time_mod.time() - seconds
             target_chat = message_chat_id if message_chat_id else chat_id
             try:
                 msg = await app.get_messages(target_chat, media.message_id)
@@ -359,6 +373,75 @@ class TgCall(PyTgCalls):
             return True
         except Exception:
             return False
+    async def _fetch_autoplay_track(self, current) -> Track | None:
+        """🔥 3-Layer Bulletproof Autoplay Finder (कभी फेल नहीं होगा!)"""
+        exclude_id = getattr(current, "id", None) if current else None
+        base_title = (getattr(current, "ytitle", None) or getattr(current, "title", "") if current else "").strip()
+        channel = getattr(current, "channel_name", None) if current else None
+
+        # LAYER 1: बॉट का अपना yt.search_related()
+        if hasattr(yt, "search_related") and base_title:
+            try:
+                res = await asyncio.wait_for(
+                    yt.search_related(title=base_title, channel_name=channel, exclude_id=exclude_id),
+                    timeout=10.0,
+                )
+                if res:
+                    cand = res[0] if isinstance(res, list) else res
+                    if getattr(cand, "id", None) and getattr(cand, "id", None) != exclude_id:
+                        return cand
+            except Exception as e:
+                logger.warning(f"Autoplay Layer 1 failed: {e}")
+
+        # LAYER 2: बॉट का yt.search() अलग-अलग कीवर्ड्स के साथ
+        queries = [
+            f"{base_title} related songs" if base_title else "Latest Hindi Songs",
+            f"{channel} hit songs" if channel else "Bollywood Trending Songs",
+            random.choice(["Arijit Singh Hit Songs", "Yo Yo Honey Singh Songs", "Punjabi Hit Songs", "Bollywood Top Hits"]),
+        ]
+        if hasattr(yt, "search"):
+            for q in queries:
+                try:
+                    res = await asyncio.wait_for(yt.search(q), timeout=10.0)
+                    if res:
+                        items = res if isinstance(res, list) else [res]
+                        for item in items:
+                            if getattr(item, "id", None) and getattr(item, "id", None) != exclude_id:
+                                return item
+                except Exception as e:
+                    logger.warning(f"Autoplay Layer 2 ({q}) failed: {e}")
+
+        # LAYER 3: Direct py_yt VideosSearch (अगर yt.search में कोई गड़बड़ हो तो सीधा YouTube से निकालेगा!)
+        try:
+            from py_yt import VideosSearch
+            q = queries[0]
+            search = VideosSearch(q, limit=5)
+            results = (await asyncio.wait_for(search.next(), timeout=10.0)).get("result", [])
+            for r in results:
+                vid = r.get("id")
+                if vid and vid != exclude_id:
+                    dur_str = r.get("duration") or "03:30"
+                    dur_sec = 0
+                    try:
+                        parts = [int(p) for p in dur_str.split(":")]
+                        dur_sec = parts[0] * 60 + parts[1] if len(parts) == 2 else parts[0] * 3600 + parts[1] * 60 + parts[2]
+                    except Exception:
+                        dur_sec = 210
+                    return Track(
+                        id=vid,
+                        channel_name=r.get("channel", {}).get("name", "YouTube"),
+                        duration=dur_str,
+                        duration_sec=dur_sec,
+                        title=r.get("title", "Autoplay Song")[:45],
+                        url=r.get("link") or f"https://www.youtube.com/watch?v={vid}",
+                        thumbnail=(r.get("thumbnails") or [{}])[-1].get("url", config.DEFAULT_THUMB),
+                        view_count=r.get("viewCount", {}).get("short", ""),
+                    )
+        except Exception as e:
+            logger.warning(f"Autoplay Layer 3 failed: {e}")
+
+        return None
+
     async def play_next(self, chat_id: int, control_message=None, force_new_message: bool = False) -> None:
         if chat_id not in self._play_next_locks:
             self._play_next_locks[chat_id] = asyncio.Lock()
@@ -382,8 +465,10 @@ class TgCall(PyTgCalls):
                 loop_mode = await db.get_loop(chat_id)
 
                 if loop_mode == 1:
-                    media = queue.get_current(chat_id)
+                    media = queue.get_current(chat_id) or self._last_played.get(chat_id)
                     if media:
+                        media.time = 0
+                        media._start_clock = time_mod.time()
                         _lang = await lang.get_lang(chat_id)
                         try:
                             if force_new_message:
@@ -405,51 +490,21 @@ class TgCall(PyTgCalls):
                             await db.rm_chat(chat_id)
                         return
                 
-                current = queue.get_current(chat_id)
+                # 🔥 _last_played की वजह से अब current कभी None नहीं होगा!
+                current = queue.get_current(chat_id) or self._last_played.get(chat_id)
                 old_current_message_id = getattr(current, "message_id", None) if current else None
                 media = queue.get_next(chat_id)
 
                 if not media:
-                    # 🔥 100% GUARANTEED AUTOPLAY ENGINE
-                    if current and loop_mode == 0 and self.autoplay_enabled(chat_id) and not getattr(current, "is_live", False):
+                    # 🔥 अगर AUTOPLAY ON है, तो 100% नया गाना ढूंढकर बजाएगा!
+                    if self.autoplay_enabled(chat_id):
                         _autoplay_msg = None
                         try:
                             _autoplay_msg = await app.send_message(chat_id=target_chat, text="🔄 Searching Autoplay Track...")
+                            _next_track = await self._fetch_autoplay_track(current)
                             
-                            _next_track = None
-                            clean_title = getattr(current, "ytitle", None) or getattr(current, "title", "Latest Hindi Songs")
-                            
-                            # STEP 1: Search Related
-                            try:
-                                result = await asyncio.wait_for(
-                                    yt.search_related(
-                                        title=clean_title,
-                                        channel_name=getattr(current, "channel_name", None),
-                                        exclude_id=getattr(current, "id", None),
-                                    ),
-                                    timeout=12.0
-                                )
-                                if result:
-                                    _next_track = result[0] if isinstance(result, list) else result
-                            except Exception:
-                                pass
-                                
-                            # STEP 2: Fallback Direct Search
-                            if not _next_track:
-                                for query_text in (f"{clean_title} song", "Trending Bollywood Songs"):
-                                    try:
-                                        result = await asyncio.wait_for(yt.search(query_text), timeout=12.0)
-                                        if result:
-                                            cand = result[0] if isinstance(result, list) else result
-                                            if getattr(cand, "id", None) != getattr(current, "id", None):
-                                                _next_track = cand
-                                                break
-                                    except Exception:
-                                        pass
-                            
-                            # STEP 3: Download & Play
                             if _next_track:
-                                _next_track.user = "Autoplay"
+                                _next_track.user = "♾ Autoplay"
                                 if not getattr(_next_track, "file_path", None):
                                     try:
                                         _next_track.file_path = await asyncio.wait_for(
@@ -458,9 +513,10 @@ class TgCall(PyTgCalls):
                                                 is_live=getattr(_next_track, "is_live", False),
                                                 video=getattr(_next_track, "video", False),
                                             ),
-                                            timeout=45.0
+                                            timeout=50.0
                                         )
-                                    except Exception:
+                                    except Exception as dl_err:
+                                        logger.error(f"Autoplay download failed: {dl_err}")
                                         _next_track.file_path = None
                                 
                                 if _next_track.file_path:
@@ -471,8 +527,8 @@ class TgCall(PyTgCalls):
                                     except Exception:
                                         pass
                                     return
-                        except Exception:
-                            pass
+                        except Exception as ap_err:
+                            logger.error(f"Autoplay error: {ap_err}")
                         
                         if _autoplay_msg:
                             try:
@@ -538,7 +594,7 @@ class TgCall(PyTgCalls):
                     pass
 
     # ---------------------------------------------------------
-    # 🚀 AUTOPLAY STATUS (100% UNIFIED WITH UI)
+    # 🚀 AUTOPLAY STATUS (100% LOCKED & UNIFIED)
     # ---------------------------------------------------------
     async def set_autoplay(self, chat_id: int, enabled: bool | None = None) -> bool:
         if enabled is None:
@@ -546,7 +602,7 @@ class TgCall(PyTgCalls):
         _PLAYER_AUTOPLAY[chat_id] = bool(enabled)
         
         try:
-            media = queue.get_current(chat_id)
+            media = queue.get_current(chat_id) or self._last_played.get(chat_id)
             if media and getattr(media, "message_id", None):
                 target_chat = getattr(media, "target_chat_id", chat_id)
                 base_text = getattr(media, "player_text", "")
@@ -600,7 +656,7 @@ class TgCall(PyTgCalls):
                         await self.stop(update.chat_id)
 
     # ---------------------------------------------------------
-    # 🚀 EXACT SYNC TIMER + AUTO-TRIGGER AUTOPLAY LOOP
+    # 🚀 EXACT CLOCK SYNC + AUTO-TRIGGER AUTOPLAY LOOP
     # ---------------------------------------------------------
     async def auto_update_player(self):
         while True:
@@ -608,50 +664,20 @@ class TgCall(PyTgCalls):
             for chat_id in list(self.active_chats):
                 try:
                     playing = await db.playing(chat_id)
-                    media = queue.get_current(chat_id)
+                    media = queue.get_current(chat_id) or self._last_played.get(chat_id)
                     if not media:
                         continue
                         
                     duration = _parse_duration(media)
                     media.duration_sec = duration
+                    played = _get_exact_played(media)
+                    media.time = played
                     
-                    if duration > 0:
-                        now = time_mod.time()
-                        if not hasattr(media, "real_start_time") or not media.real_start_time:
-                            media.real_start_time = now - float(getattr(media, "time", 0) or 0)
-                            media.is_paused = not playing
-                        
-                        if playing:
-                            if getattr(media, "is_paused", False):
-                                media.real_start_time = now - float(getattr(media, "time", 0) or 0)
-                                media.is_paused = False
-                            
-                            real_played = None
-                            try:
-                                client = await db.get_assistant(chat_id)
-                                if hasattr(client, "played_time"):
-                                    pt = await client.played_time(chat_id)
-                                    if pt and int(pt) > 0:
-                                        real_played = int(pt)
-                            except Exception:
-                                pass
-                                
-                            if real_played is not None:
-                                media.time = real_played
-                                media.real_start_time = now - real_played
-                            else:
-                                media.time = int(now - media.real_start_time)
-                            
-                            # 🔥 अगर गाना खत्म हो गया है और StreamEnded मिस हो गया, तो खुद Autoplay चालू करो!
-                            if media.time >= duration + 2 and not getattr(media, "_auto_ended", False):
-                                media._auto_ended = True
-                                asyncio.create_task(self.play_next(chat_id))
-                                continue
-                                
-                            if media.time > duration:
-                                media.time = duration
-                        else:
-                            media.is_paused = True
+                    # 🔥 अगर गाना पूरा बज गया है, तो तुरंत Autoplay / Play Next ट्रिगर करो!
+                    if playing and duration > 0 and played >= duration and not getattr(media, "_auto_ended", False):
+                        media._auto_ended = True
+                        asyncio.create_task(self.play_next(chat_id))
+                        continue
                     
                     msg_id = getattr(media, "message_id", None)
                     target_chat = getattr(media, "target_chat_id", chat_id)
@@ -679,4 +705,4 @@ class TgCall(PyTgCalls):
             
         asyncio.create_task(self.auto_update_player())
         logger.info("📞 PyTgCalls client(s) started & Smart Timer Loop is running.")
-                                
+        
