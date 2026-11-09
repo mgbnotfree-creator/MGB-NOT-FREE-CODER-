@@ -168,6 +168,8 @@ class TgCall(PyTgCalls):
                         return
                 except Exception:
                     pass
+        except Exception:
+            pass
 
         if seek_time > 1:
             ffmpeg_params = f"-ss {seek_time} -probesize 2M -analyzeduration 1M -rtbufsize 2M -fflags +genpts+igndts"
@@ -321,7 +323,6 @@ class TgCall(PyTgCalls):
         chat_id = getattr(current, "chat_id", None) or 0
         history = self._played_history.get(chat_id, [])
         
-        # वर्तमान और पिछले 25 गानों की आईडी को पूरी तरह ब्लॉक कर दो ताकि रिपीट न हो!
         exclude_ids = {str(getattr(current, "id", ""))}
         for hid in history[-25:]:
             exclude_ids.add(str(hid))
@@ -626,4 +627,4 @@ class TgCall(PyTgCalls):
             
         asyncio.create_task(self.auto_update_player())
         logger.info("📞 PyTgCalls client(s) started & 1s Watchdog Timer Loop is running.")
-        
+                        
