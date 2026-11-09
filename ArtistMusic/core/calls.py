@@ -9,6 +9,13 @@ import logging
 import random
 import time as time_mod
 from collections import defaultdict
+
+# 🔥 PYTHON 3.14 FIX: PyTgCalls इम्पोर्ट होने से पहले Event Loop बनाना ज़रूरी है!
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
 from ntgcalls import ConnectionNotFound, TelegramServerError
 from pyrogram import enums, errors
 from pyrogram.errors import MessageIdInvalid
@@ -40,7 +47,6 @@ class PyTgCallsErrorFilter(logging.Filter):
 logging.getLogger('pyrogram.dispatcher').addFilter(PyTgCallsErrorFilter())
 
 class _AutoplayDict(dict):
-    """🔥 अगर बाहरी callbacks.py इस डिक्शनरी को बदलेगा, तो भी _PLAYER_AUTOPLAY अपने आप अपडेट हो जाएगा!"""
     def __setitem__(self, key, value):
         key = int(key)
         val = bool(value)
@@ -395,7 +401,6 @@ class TgCall(PyTgCalls):
         base_title = (getattr(current, "ytitle", None) or getattr(current, "title", "") if current else "").strip()
         channel = getattr(current, "channel_name", None) if current else None
 
-        # LAYER 1: yt.search_related
         if hasattr(yt, "search_related") and base_title:
             try:
                 res = await asyncio.wait_for(
@@ -409,7 +414,6 @@ class TgCall(PyTgCalls):
             except Exception:
                 pass
 
-        # LAYER 2: yt.search / yt.track
         queries = [
             f"{base_title} song" if base_title else "Latest Bollywood Songs",
             f"{channel} songs" if channel else "Hindi Hit Songs",
@@ -429,7 +433,6 @@ class TgCall(PyTgCalls):
                     except Exception:
                         pass
 
-        # LAYER 3: Direct py_yt / youtubesearchpython
         for mod_name in ("py_yt", "youtubesearchpython.__future__"):
             try:
                 mod = __import__(mod_name, fromlist=["VideosSearch"])
@@ -492,7 +495,6 @@ class TgCall(PyTgCalls):
                 media = queue.get_next(chat_id)
 
                 if not media:
-                    # 🔥 अगर AUTOPLAY ON है, तो किसी भी हाल में स्टॉप नहीं होगा, अगला गाना बजाएगा!
                     if self.autoplay_enabled(chat_id):
                         _autoplay_msg = None
                         try:
@@ -627,9 +629,6 @@ class TgCall(PyTgCalls):
                     ]:
                         await self.stop(update.chat_id)
 
-    # ---------------------------------------------------------
-    # 🚀 1-SECOND WATCHDOG + 5-SECOND UI REFRESH LOOP
-    # ---------------------------------------------------------
     async def auto_update_player(self):
         tick = 0
         while True:
@@ -647,13 +646,11 @@ class TgCall(PyTgCalls):
                     played = _get_exact_played(media, duration)
                     media.time = played
                     
-                    # 🔥 हर 1 सेकंड में चेक करेगा: जैसे ही गाना खत्म हुआ (02:21 == 02:21), तुरंत अगला गाना प्ले करेगा!
                     if playing and duration > 0 and played >= duration and not getattr(media, "_auto_ended", False):
                         media._auto_ended = True
                         asyncio.create_task(self.play_next(chat_id))
                         continue
                     
-                    # हर 5वें सेकंड में प्लेयर का डॉट (●) और कलर अपडेट करेगा
                     if tick % 5 == 0:
                         target_chat = getattr(media, "target_chat_id", chat_id)
                         msg_id = getattr(media, "message_id", None) or _PLAYER_LAST_MSG.get(target_chat)
@@ -681,4 +678,4 @@ class TgCall(PyTgCalls):
             
         asyncio.create_task(self.auto_update_player())
         logger.info("📞 PyTgCalls client(s) started & 1s Watchdog Timer Loop is running.")
-            
+                        
