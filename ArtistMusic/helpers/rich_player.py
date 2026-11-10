@@ -64,7 +64,6 @@ def _parse_duration(media, timer_str: Optional[str] = None) -> int:
     return 0
 
 def _get_exact_played(media, duration: int, timer_str: Optional[str] = None) -> int:
-    """🔥 हमेशा असली घड़ी या पास किए गए टाइम से सटीक सेकंड निकालेगा!"""
     start_clock = getattr(media, "_start_clock", None)
     if start_clock is not None:
         if getattr(media, "_paused_at", None):
@@ -89,7 +88,7 @@ def _time(sec: int, duration: int) -> str:
     return time.strftime("%H:%M:%S" if duration >= 3600 else "%M:%S", time.gmtime(sec))
 
 def progress_text(media, timer: Optional[str] = None) -> str:
-    """🔥 बाहरी नकली डॉट को इग्नोर करेगा और 100% टाइम के हिसाब से ▶ खिसकाएगा!"""
+    """🔥 इसमें छोटा ब्लैक ऐरो (▸) लगाया गया है जो कभी इमोजी में नहीं बदलेगा!"""
     duration = _parse_duration(media, timer)
     if duration <= 0:
         return "LIVE"
@@ -106,7 +105,8 @@ def progress_text(media, timer: Optional[str] = None) -> str:
     if played >= duration - 1:
         filled = n
         
-    bar = "—" * filled + "▶" + "—" * (n - filled)
+    # ▸ (Small Black Right-Pointing Triangle) - कभी भी ब्लू इमोजी नहीं बनेगा!
+    bar = "—" * filled + "▸" + "—" * (n - filled)
     return f"{_time(played, duration)} {bar} {_time(duration, duration)}"
 
 def _clean_base_html(base_html: str) -> str:
@@ -141,7 +141,6 @@ def get_player_html(chat_id: int, media, playing: bool = True, autoplay: Optiona
     
     p = html.escape(progress_text(media, timer))
     
-    # 🔥 हमेशा _PLAYER_AUTOPLAY से असली स्टेट पढ़ेगा!
     real_ap = bool(_PLAYER_AUTOPLAY.get(int(chat_id), False))
     ap_label = "AUTOPLAY | ON" if real_ap else "AUTOPLAY | OFF"
     ap_style = "success" if real_ap else "danger"
@@ -358,7 +357,6 @@ async def edit_player_message(chat_id, message_id, base_html, media, *args, **kw
                              remove=kwargs.get("remove", False),
                              photo=kwargs.get("photo"))
 
-# 🚀 PRIORITY -1 INTERCEPTOR: यह किसी भी पुराने callback से पहले चलेगा और बटन को 100% ON/OFF करेगा!
 @app.on_callback_query(filters.regex(r"autoplay"), group=-1)
 async def _master_autoplay_interceptor(client, query):
     try:
@@ -381,4 +379,3 @@ async def _master_autoplay_interceptor(client, query):
         query.stop_propagation()
     except Exception:
         pass
-    
