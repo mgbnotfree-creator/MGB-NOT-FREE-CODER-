@@ -7,6 +7,7 @@
 import asyncio
 import logging
 import random
+import re
 import time as time_mod
 from collections import defaultdict
 
@@ -66,7 +67,35 @@ class TgCall(PyTgCalls):
         self._stream_end_cache = {}  
         self._autoplay = _AutoplayDict()
         self._last_played = {}
+        self._played_history = defaultdict(list)
+        self._played_titles = defaultdict(list)
+        self._active_player_msg = {}
         self.active_chats = set()
+
+    async def _delete_old_player(self, target_chat: int, *msg_ids) -> None:
+        """🔥 पुराने प्लेयर मैसेज को 100% डिलीट करेगा ताकि चैट में कचरा न फैले"""
+        ids = set()
+        for mid in msg_ids:
+            try:
+                if mid and int(mid) > 0:
+                    ids.add(int(mid))
+            except Exception:
+                pass
+        last_mid = self._active_player_msg.get(target_chat) or _PLAYER_LAST_MSG.get(target_chat)
+        if last_mid:
+            try:
+                ids.add(int(last_mid))
+            except Exception:
+                pass
+        for mid in ids:
+            try:
+                await edit_player(target_chat, mid, "", None, remove=True)
+            except Exception:
+                pass
+            try:
+                await app.delete_messages(chat_id=target_chat, message_ids=[mid], revoke=True)
+            except Exception:
+                pass
 
     async def _edit_media_with_retry(self, message: Message, media_obj: InputMediaPhoto, reply_markup):
         try:
@@ -212,9 +241,13 @@ class TgCall(PyTgCalls):
             media._start_clock = now - media.time
             media._paused_at = None
             media._auto_ended = False
+            media.chat_id = chat_id
             media.target_chat_id = target_chat_for_messages
             media.duration_sec = _parse_duration(media)
             self._last_played[chat_id] = media
+
+            # 🔥 जो गाना अभी बजा है, उसकी ID और उसका नाम तुरंत हिस्ट्री में लॉक कर दो!
+            self._record_song(chat_id, getattr(media, "id", ""), getattr(media, "title", ""))
 
             if not seek_time:
                 await db.add_call(chat_id)
@@ -225,34 +258,24 @@ class TgCall(PyTgCalls):
                 media.player_text = text
                 _PLAYER_LAST_TEXT[target_chat_for_messages] = text
                 
-                if reuse_message and message is not None and int(getattr(message, "id", 0) or 0):
-                    media.message_id = int(message.id)
+                if message:
                     try:
-                        ok = await edit_player(
-                            target_chat_for_messages, media.message_id, text, media,
-                            playing=True, photo=_thumb, autoplay=self.autoplay_enabled(chat_id),
-                        )
-                    except Exception:
-                        ok = False
-                    if not ok:
-                        try:
-                            media.message_id = await send_player(
-                                target_chat_for_messages, text, photo=_thumb, media=media, playing=True, autoplay=self.autoplay_enabled(chat_id)
-                            )
-                        except Exception:
-                            pass
-                else:
-                    if message:
-                        try:
-                            await message.delete()
-                        except Exception:
-                            pass
-                    try:
-                        media.message_id = await send_player(
-                            target_chat_for_messages, text, photo=_thumb, media=media, playing=True, autoplay=self.autoplay_enabled(chat_id)
-                        )
+                        await message.delete()
                     except Exception:
                         pass
+
+                # 🔥 नया प्लेयर भेजने से पहले अगर कोई पुराना प्लेयर चैट में है तो उसे उड़ा दो!
+                old_mid = self._active_player_msg.get(target_chat_for_messages)
+                if old_mid:
+                    await self._delete_old_player(target_chat_for_messages, old_mid)
+
+                try:
+                    media.message_id = await send_player(
+                        target_chat_for_messages, text, photo=_thumb, media=media, playing=True, autoplay=self.autoplay_enabled(chat_id)
+                    )
+                    self._active_player_msg[target_chat_for_messages] = int(media.message_id)
+                except Exception:
+                    pass
                 
                 try:
                     asyncio.create_task(preload.start_preload(chat_id, count=2))
@@ -281,7 +304,7 @@ class TgCall(PyTgCalls):
             _lang = await lang.get_lang(chat_id)
             target_chat = message_chat_id if message_chat_id else chat_id
             msg = control_message or await app.send_message(chat_id=target_chat, text=_lang["play_again"])
-            await self.play_media(chat_id, msg, media, message_chat_id=message_chat_id, reuse_message=bool(control_message))
+            await self.play_media(chat_id, msg, media, message_chat_id=message_chat_id, reuse_message=False)
         except Exception:
             pass
 
@@ -315,50 +338,104 @@ class TgCall(PyTgCalls):
             return True
         except Exception:
             return False
-    async def _fetch_autoplay_track(self, current) -> Track | None:
-        """🔥 Strict No-Repeat Autoplay Finder (कभी भी गाना रिपीट नहीं होगा)"""
-        if not hasattr(self, "_played_history"):
-            self._played_history = {}
-            
-        chat_id = getattr(current, "chat_id", None) or 0
-        history = self._played_history.get(chat_id, [])
-        
-        exclude_ids = {str(getattr(current, "id", ""))}
-        for hid in history[-25:]:
-            exclude_ids.add(str(hid))
-            
+    def _clean_song_key(self, title: str) -> str:
+        """🔥 गाने के नाम में से 'Official Video, Full Audio, Song' हटाकर असली नाम निकालेगा (जैसे 'sahiba')"""
+        t = str(title or "").lower()
+        t = re.sub(r"[\(\[\{].*?[\)\]\}]", " ", t)
+        t = re.sub(r"\b(official|music|video|audio|full|song|lyrics|lyrical|hd|4k|remix|lofi|slowed|reverb|ft|feat)\b", " ", t)
+        t = re.sub(r"[^a-z0-9\s]", " ", t)
+        words = [w for w in t.split() if len(w) > 2]
+        return " ".join(words[:2]).strip()
+
+    def _record_song(self, chat_id: int, vid: str, title: str):
+        vid = str(vid or "").strip()
+        if vid:
+            hist = self._played_history[chat_id]
+            if vid not in hist:
+                hist.append(vid)
+            if len(hist) > 40:
+                hist.pop(0)
+        key = self._clean_song_key(title)
+        if key:
+            thist = self._played_titles[chat_id]
+            if key not in thist:
+                thist.append(key)
+            if len(thist) > 30:
+                thist.pop(0)
+
+    def _is_duplicate_song(self, chat_id: int, vid: str, title: str, current_title: str = "") -> bool:
+        """🔥 अगर ID पहले बज चुकी है या गाने का नाम (जैसे 'Sahiba') पहले बज चुका है, तो तुरंत रिजेक्ट कर देगा!"""
+        vid = str(vid or "").strip()
+        if not vid or vid in self._played_history[chat_id]:
+            return True
+        key = self._clean_song_key(title)
+        cur_key = self._clean_song_key(current_title)
+        if key and (key == cur_key or key in self._played_titles[chat_id]):
+            return True
+        for old_key in self._played_titles[chat_id]:
+            if key and old_key and (key in old_key or old_key in key):
+                return True
+        return False
+
+    async def _fetch_autoplay_track(self, chat_id: int, current) -> Track | None:
+        """🔥 100% Unique Song Autoplay Finder (कभी भी सेम गाना दोबारा नहीं बजाएगा!)"""
         base_title = (getattr(current, "ytitle", None) or getattr(current, "title", "") if current else "").strip()
-        channel = getattr(current, "channel_name", None) if current else None
+        channel = (getattr(current, "channel_name", "") if current else "").strip()
+        if current:
+            self._record_song(chat_id, getattr(current, "id", ""), base_title)
 
-        queries = [
-            f"{base_title} audio song remix" if base_title else "Latest Bollywood Hits",
-            f"{channel} live jukebox audio" if channel else "Trending Punjabi Songs",
-            random.choice([
-                "Top 10 Bollywood Romantic Songs Audio", 
-                "Arijit Singh Non Stop Melodies", 
-                "Yo Yo Honey Singh Party Anthems", 
-                "Latest LoFi Mashup Songs Audio",
-                "New Trending Indian Pop Songs",
-                "Superhit Hindi Songs Audio Jukebox"
-            ])
+        # 🔥 कभी भी पुराने गाने का नाम सर्च मत करो वरना वही गाना फिर आएगा! सिंगर या नए हिट्स सर्च करो:
+        artist_pool = [
+            "Arijit Singh Superhit Song", "Atif Aslam Hit Song", "Pritam Bollywood Hit Song",
+            "Vishal Mishra Hit Song", "Jubin Nautiyal Romantic Song", "KK Best Hindi Song",
+            "Shreya Ghoshal Hit Song", "Darshan Raval Hit Song", "B Praak Hit Song",
+            "AP Dhillon Hit Song", "Diljit Dosanjh Hit Song", "Karan Aujla Hit Song",
+            "Badshah Party Song", "Yo Yo Honey Singh Hit Song", "Anuv Jain Song",
+            "King New Hindi Song", "emraan hashmi hit song", "Trending Hindi Song 2025"
         ]
+        random.shuffle(artist_pool)
+        queries = []
+        if channel and channel.lower() not in ("youtube", "unknown", "t-series", "zee music company", "sony music india"):
+            queries.append(f"{channel} top hit song")
+        queries.extend(artist_pool[:4])
 
-        if hasattr(yt, "search_related") and base_title:
+        # LAYER 1: Direct py_yt Search (15 रिजल्ट्स में से रैंडमली वो गाना चुनेगा जो पहले नहीं बजा!)
+        for mod_name in ("py_yt", "youtubesearchpython.__future__"):
             try:
-                res = await asyncio.wait_for(
-                    yt.search_related(title=base_title, channel_name=channel, exclude_id=list(exclude_ids)[0] if exclude_ids else None),
-                    timeout=10.0,
-                )
-                if res:
-                    items = res if isinstance(res, list) else [res]
-                    for item in items:
-                        vid = str(getattr(item, "id", ""))
-                        if vid and vid not in exclude_ids:
-                            self._record_history(chat_id, vid, history)
-                            return item
+                mod = __import__(mod_name, fromlist=["VideosSearch"])
+                VideosSearch = getattr(mod, "VideosSearch")
+                for q in queries[:3]:
+                    search = VideosSearch(q, limit=12)
+                    res_data = await asyncio.wait_for(search.next(), timeout=10.0)
+                    results = res_data.get("result", [])
+                    random.shuffle(results)
+                    for r in results:
+                        vid = str(r.get("id") or "")
+                        r_title = str(r.get("title") or "")
+                        dur_str = r.get("duration") or ""
+                        if not dur_str or ":" not in dur_str:
+                            continue
+                        parts = [int(p) for p in dur_str.split(":")]
+                        dur_sec = parts[0] * 60 + parts[1] if len(parts) == 2 else 9999
+                        # 8 मिनट से बड़े Jukebox और पुराने गानों को छोड़ दो!
+                        if dur_sec > 480 or dur_sec < 90:
+                            continue
+                        if not self._is_duplicate_song(chat_id, vid, r_title, base_title):
+                            self._record_song(chat_id, vid, r_title)
+                            return Track(
+                                id=vid,
+                                channel_name=r.get("channel", {}).get("name", "YouTube"),
+                                duration=dur_str,
+                                duration_sec=dur_sec,
+                                title=r_title[:45],
+                                url=r.get("link") or f"https://www.youtube.com/watch?v={vid}",
+                                thumbnail=(r.get("thumbnails") or [{}])[-1].get("url", config.DEFAULT_THUMB),
+                                view_count=r.get("viewCount", {}).get("short", ""),
+                            )
             except Exception:
                 pass
 
+        # LAYER 2: Fallback yt.search
         for method_name in ("search", "track"):
             fn = getattr(yt, method_name, None)
             if callable(fn):
@@ -369,45 +446,14 @@ class TgCall(PyTgCalls):
                             items = res if isinstance(res, list) else [res]
                             for item in items:
                                 vid = str(getattr(item, "id", ""))
-                                if vid and vid not in exclude_ids:
-                                    self._record_history(chat_id, vid, history)
+                                r_title = str(getattr(item, "title", ""))
+                                if not self._is_duplicate_song(chat_id, vid, r_title, base_title):
+                                    self._record_song(chat_id, vid, r_title)
                                     return item
                     except Exception:
                         pass
 
-        for mod_name in ("py_yt", "youtubesearchpython.__future__"):
-            try:
-                mod = __import__(mod_name, fromlist=["VideosSearch"])
-                VideosSearch = getattr(mod, "VideosSearch")
-                search = VideosSearch(random.choice(queries), limit=15)
-                res_data = await asyncio.wait_for(search.next(), timeout=10.0)
-                for r in res_data.get("result", []):
-                    vid = str(r.get("id"))
-                    if vid and vid not in exclude_ids:
-                        dur_str = r.get("duration") or "03:30"
-                        parts = [int(p) for p in dur_str.split(":")] if ":" in dur_str else [3, 30]
-                        dur_sec = parts[0] * 60 + parts[1] if len(parts) == 2 else 210
-                        self._record_history(chat_id, vid, history)
-                        return Track(
-                            id=vid,
-                            channel_name=r.get("channel", {}).get("name", "YouTube"),
-                            duration=dur_str,
-                            duration_sec=dur_sec,
-                            title=r.get("title", "Autoplay Track")[:45],
-                            url=r.get("link") or f"https://www.youtube.com/watch?v={vid}",
-                            thumbnail=(r.get("thumbnails") or [{}])[-1].get("url", config.DEFAULT_THUMB),
-                            view_count=r.get("viewCount", {}).get("short", ""),
-                        )
-            except Exception:
-                pass
-
         return None
-
-    def _record_history(self, chat_id: int, vid: str, history: list):
-        history.append(vid)
-        if len(history) > 30:
-            history.pop(0)
-        self._played_history[chat_id] = history
 
     async def play_next(self, chat_id: int, control_message=None, force_new_message: bool = False) -> None:
         if chat_id not in self._play_next_locks:
@@ -429,26 +475,26 @@ class TgCall(PyTgCalls):
                 target_chat = message_chat_id if message_chat_id else chat_id
                 loop_mode = await db.get_loop(chat_id)
 
-                if loop_mode == 1:
-                    media = queue.get_current(chat_id) or self._last_played.get(chat_id)
-                    if media:
-                        media.time = 0
-                        media._start_clock = time_mod.time()
-                        _lang = await lang.get_lang(chat_id)
-                        msg = control_message or await app.send_message(chat_id=target_chat, text=_lang["play_again"])
-                        await self.play_media(chat_id, msg, media, message_chat_id=message_chat_id, reuse_message=bool(control_message and not force_new_message))
-                        return
-                
                 current = queue.get_current(chat_id) or self._last_played.get(chat_id)
                 old_current_message_id = getattr(current, "message_id", None) if current else None
+
+                if loop_mode == 1 and current:
+                    current.time = 0
+                    current._start_clock = time_mod.time()
+                    await self._delete_old_player(target_chat, old_current_message_id)
+                    await self.play_media(chat_id, None, current, message_chat_id=message_chat_id)
+                    return
+                
                 media = queue.get_next(chat_id)
 
                 if not media:
                     if self.autoplay_enabled(chat_id):
                         _autoplay_msg = None
                         try:
-                            _autoplay_msg = await app.send_message(chat_id=target_chat, text="🔄 Searching Autoplay Track...")
-                            _next_track = await self._fetch_autoplay_track(current)
+                            # 🔥 सबसे पहले पुराना प्लेयर डिलीट करो ताकि चैट एकदम साफ़ रहे!
+                            await self._delete_old_player(target_chat, old_current_message_id)
+                            _autoplay_msg = await app.send_message(chat_id=target_chat, text="🔄 Searching New Autoplay Song...")
+                            _next_track = await self._fetch_autoplay_track(chat_id, current)
                             
                             if _next_track:
                                 _next_track.user = "♾ Autoplay"
@@ -478,6 +524,7 @@ class TgCall(PyTgCalls):
                             except Exception:
                                 pass
 
+                    await self._delete_old_player(target_chat, old_current_message_id)
                     if config.AUTO_END:
                         _lang = await lang.get_lang(chat_id)
                         try:
@@ -486,23 +533,9 @@ class TgCall(PyTgCalls):
                             pass
                     return await self.stop(chat_id)
 
-                _lang = await lang.get_lang(chat_id)
-                if force_new_message:
-                    ids_to_delete = []
-                    for mid in (old_current_message_id, getattr(media, "message_id", None)):
-                        try:
-                            mid = int(mid)
-                        except (TypeError, ValueError):
-                            continue
-                        if mid and mid not in ids_to_delete:
-                            ids_to_delete.append(mid)
-                    if ids_to_delete:
-                        try:
-                            await app.delete_messages(chat_id=target_chat, message_ids=ids_to_delete, revoke=True)
-                        except Exception:
-                            pass
-                
-                msg = None
+                # 🔥 क्यू के अगले गाने से पहले पुराना प्लेयर मैसेज तुरंत डिलीट करो!
+                await self._delete_old_player(target_chat, old_current_message_id, getattr(media, "message_id", None))
+
                 if not media.file_path:
                     is_live = getattr(media, 'is_live', False)
                     media.file_path = await yt.download(media.id, is_live=is_live, video=getattr(media, 'video', False))
@@ -510,13 +543,7 @@ class TgCall(PyTgCalls):
                         await self.stop(chat_id)
                         return
 
-                try:
-                    msg = control_message or await app.send_message(chat_id=target_chat, text=_lang["play_next"])
-                except Exception:
-                    msg = None
-
-                media.message_id = (msg.id if msg else 0) if (force_new_message or not control_message) else int(control_message.id)
-                await self.play_media(chat_id, msg, media, message_chat_id=message_chat_id, reuse_message=bool(control_message and not force_new_message))
+                await self.play_media(chat_id, control_message, media, message_chat_id=message_chat_id)
             except Exception:
                 try:
                     await self.stop(chat_id)
@@ -627,4 +654,4 @@ class TgCall(PyTgCalls):
             
         asyncio.create_task(self.auto_update_player())
         logger.info("📞 PyTgCalls client(s) started & 1s Watchdog Timer Loop is running.")
-                        
+            
