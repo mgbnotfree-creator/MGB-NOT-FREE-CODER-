@@ -1,14 +1,12 @@
 # ========================================================== 
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB Coder
 # All Rights Reserved.
 #
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist 
+# Project      : MGB Coder Telegram Music Bot
+# Powered By   : MGB NOT FREE CODER 
 # Type         : API Based Telegram Music Bot
 #
-# Bot          : @ArtistApibot
 # Channel      : https://t.me/MGB_CODER
-# GitHub       : https://github.com/elevenyts/ArtistMusic
 #
 # Unauthorized copying, modification, or redistribution
 # of this source code without permission is prohibited.
@@ -56,9 +54,9 @@ class Config:
         self.VIDEO_PLAY: bool = self._str_to_bool(getenv("VIDEO_PLAY", "True"))
         self.VIDEO_MAX_HEIGHT: int = self._parse_video_height()
 
-        # ArtistBots API https://t.me/MGB_CODER 
-        self.ARTISTBOTS_API_URL: str = getenv("ARTISTBOTS_API_URL", "https://api.artistbotsapi.bond")
-        self.ARTISTBOTS_KEY: str = getenv("ARTISTBOTS_KEY", "")
+        # ShrutiBots API Updated
+        self.ARTISTBOTS_API_URL: str = getenv("ARTISTBOTS_API_URL", "https://api.shrutibots.in")
+        self.ARTISTBOTS_KEY: str = getenv("ARTISTBOTS_KEY", "ShrutiBotsNOexqASVgg7z5F4ikHBT")
         self.ENABLE_API: bool = self._str_to_bool(getenv("ENABLE_API", "True"))
         self.ENABLE_COOKIES_FALLBACK: bool = self._str_to_bool(getenv("ENABLE_COOKIES_FALLBACK", "True"))
         self.API_TIMEOUT: int = int(getenv("API_TIMEOUT", "60"))
@@ -67,7 +65,7 @@ class Config:
         # YouTube Cookies
         self.COOKIES_URL: List[str] = self._parse_cookies()
 
-        # Images (यहाँ आपकी नई इमेज का लिंक सेट कर दिया गया है)
+        # Images
         self.DEFAULT_THUMB: str = getenv("DEFAULT_THUMB", "https://graph.org/file/8e084972eb12cfbca9608-b2fbb5c052543b3a1f.jpg")
         self.PING_IMG: str = getenv("PING_IMG", "https://graph.org/file/8e084972eb12cfbca9608-b2fbb5c052543b3a1f.jpg")
         self.START_IMG: str = getenv("START_IMG", "https://graph.org/file/8e084972eb12cfbca9608-b2fbb5c052543b3a1f.jpg")
@@ -128,3 +126,4 @@ class Config:
 
 
 config = Config()
+        
