@@ -112,7 +112,7 @@ class Config:
         self.VIDEO_PLAY: bool = self._str_to_bool(getenv("VIDEO_PLAY", "True"))
         self.VIDEO_MAX_HEIGHT: int = self._parse_video_height()
 
-        # ShrutiBots API Updated
+        # ShrutiBots API
         self.ARTISTBOTS_API_URL: str = getenv("ARTISTBOTS_API_URL", "https://api.shrutibots.in")
         self.ARTISTBOTS_KEY: str = getenv("ARTISTBOTS_KEY", "ShrutiBotsNOexqASVgg7z5F4ikHBT")
         self.ENABLE_API: bool = self._str_to_bool(getenv("ENABLE_API", "True"))
@@ -185,4 +185,3 @@ class Config:
 
 
 config = Config()
-        
