@@ -62,6 +62,20 @@ async def _loading_animation(message: types.Message):
 # 🎨 SMART RICH MESSAGE API WITH COLORFUL HTML BUTTONS 🎨
 # ----------------------------------------------------------
 
+def get_random_start_img():
+    """This function picks ONE random image from the string of URLs in config."""
+    if not config.START_IMG:
+        return "https://i.ibb.co/8nyBbj1G/uploaded-image.jpg"
+    
+    # Split the long string of URLs by space into a list
+    img_list = config.START_IMG.split()
+    if not img_list:
+         return "https://i.ibb.co/8nyBbj1G/uploaded-image.jpg"
+         
+    # Pick and return one random URL
+    return random.choice(img_list)
+
+
 async def _send_rich_start(chat_id: int, photo_url: str, text: str):
     if not config.BOT_TOKEN: return None
     safe_text = text.replace('\n', '<br>')
@@ -128,8 +142,8 @@ async def rich_start_cb(_, query: types.CallbackQuery):
     except Exception:
         pass
         
-    if config.START_IMG and config.START_IMG.strip():
-        await _send_rich_start(query.message.chat.id, config.START_IMG, _text)
+    random_pic = get_random_start_img()
+    await _send_rich_start(query.message.chat.id, random_pic, _text)
         
     raise StopPropagation  
 
@@ -170,8 +184,8 @@ async def rich_help_categories_cb(_, query: types.CallbackQuery):
     except Exception:
         pass
         
-    if config.START_IMG and config.START_IMG.strip():
-        await _send_rich_help(query.message.chat.id, config.START_IMG, help_text, html_buttons)
+    random_pic = get_random_start_img()
+    await _send_rich_help(query.message.chat.id, random_pic, help_text, html_buttons)
         
     raise StopPropagation # यह पुराने क्रैश करने वाले कोड को चलने से पूरी तरह रोक देता है!
 
@@ -199,8 +213,8 @@ async def _help(_, m: types.Message):
     html_buttons = buttons.help_markup(m.lang)
     sent_data = None
     try:
-        if config.START_IMG and config.START_IMG.strip():
-            sent_data = await _send_rich_help(m.chat.id, config.START_IMG, help_text, html_buttons)
+        random_pic = get_random_start_img()
+        sent_data = await _send_rich_help(m.chat.id, random_pic, help_text, html_buttons)
     except Exception: pass
     if sent_data and "message_id" in sent_data:
         try: await app.send_reaction(m.chat.id, sent_data["message_id"], "👏")
@@ -231,8 +245,8 @@ async def start(_, message: types.Message):
 
     sent_data = None
     try:
-        if config.START_IMG and config.START_IMG.strip():
-            sent_data = await _send_rich_start(message.chat.id, config.START_IMG, _text)
+        random_pic = get_random_start_img()
+        sent_data = await _send_rich_start(message.chat.id, random_pic, _text)
     except Exception:
         try:
             key = buttons.start_key(message.lang, private)
@@ -278,4 +292,3 @@ async def _new_member(_, message: types.Message):
         if member.id == app.id:
             if await db.is_chat(message.chat.id): return
             await db.add_chat(message.chat.id)
-        
