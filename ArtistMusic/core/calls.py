@@ -154,6 +154,7 @@ class TgCall(PyTgCalls):
             await asyncio.sleep(0.5)
         except Exception:
             pass
+
     async def play_media(
         self,
         chat_id: int,
@@ -208,10 +209,14 @@ class TgCall(PyTgCalls):
         is_video = getattr(media, "video", False)
         video_flags = types.MediaStream.Flags.AUTO_DETECT if is_video else types.MediaStream.Flags.IGNORE
 
+        # 🔥 VIDEO QUALITY UPDATED TO HD 1080p 🔥
+        video_params = types.VideoQuality.FHD_1080p if is_video else None
+
         stream = types.MediaStream(
             media_path=media.file_path,
             audio_parameters=types.AudioQuality.STUDIO,
             audio_flags=types.MediaStream.Flags.REQUIRED,
+            video_parameters=video_params,
             video_flags=video_flags,
             ffmpeg_parameters=ffmpeg_params,
         )
@@ -283,7 +288,6 @@ class TgCall(PyTgCalls):
                     pass
         except Exception:
             await self.stop(chat_id)
-
     async def replay(self, chat_id: int, control_message=None) -> None:
         try:
             if not await db.get_call(chat_id):
@@ -338,6 +342,7 @@ class TgCall(PyTgCalls):
             return True
         except Exception:
             return False
+
     def _clean_song_key(self, title: str) -> str:
         """🔥 गाने के नाम में से 'Official Video, Full Audio, Song' हटाकर असली नाम निकालेगा (जैसे 'sahiba')"""
         t = str(title or "").lower()
@@ -399,7 +404,7 @@ class TgCall(PyTgCalls):
             queries.append(f"{channel} top hit song")
         queries.extend(artist_pool[:4])
 
-        # LAYER 1: Direct py_yt Search (15 रिजल्ट्स में से रैंडमली वो गाना चुनेगा जो पहले नहीं बजा!)
+        # LAYER 1: Direct py_yt Search
         for mod_name in ("py_yt", "youtubesearchpython.__future__"):
             try:
                 mod = __import__(mod_name, fromlist=["VideosSearch"])
@@ -452,7 +457,6 @@ class TgCall(PyTgCalls):
                                     return item
                     except Exception:
                         pass
-
         return None
 
     async def play_next(self, chat_id: int, control_message=None, force_new_message: bool = False) -> None:
@@ -654,4 +658,4 @@ class TgCall(PyTgCalls):
             
         asyncio.create_task(self.auto_update_player())
         logger.info("📞 PyTgCalls client(s) started & 1s Watchdog Timer Loop is running.")
-            
+                
