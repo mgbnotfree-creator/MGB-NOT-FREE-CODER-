@@ -113,8 +113,8 @@ class Config:
         self.VIDEO_MAX_HEIGHT: int = self._parse_video_height()
 
         # Zefron API (Updated from ShrutiBots)
-        self.ARTISTBOTS_API_URL: str = getenv("ARTISTBOTS_API_URL", "https://3.25.100.233.sslip.io")
-        self.ARTISTBOTS_KEY: str = getenv("ARTISTBOTS_KEY", "YOUR_ZEFRON_API_KEY")
+        self.ARTISTBOTS_API_URL: str = getenv("ARTISTBOTS_API_URL", "https://api.Artistbotsapi.bond")
+        self.ARTISTBOTS_KEY: str = getenv("ARTISTBOTS_KEY", "Artistbots8tse6ftcryc6q")
         self.ENABLE_API: bool = self._str_to_bool(getenv("ENABLE_API", "True"))
         self.ENABLE_COOKIES_FALLBACK: bool = self._str_to_bool(getenv("ENABLE_COOKIES_FALLBACK", "True"))
         self.API_TIMEOUT: int = int(getenv("API_TIMEOUT", "60"))
