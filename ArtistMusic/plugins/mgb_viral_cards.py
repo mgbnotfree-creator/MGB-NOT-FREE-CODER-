@@ -31,7 +31,7 @@ MSG_COUNTS = defaultdict(lambda: defaultdict(int))  # {chat_id: {user_id: count}
 USER_NAMES = {}  # {user_id: str}
 VC_POINTS = defaultdict(lambda: defaultdict(int))   # {chat_id: {user_id: minutes}}
 
-FOOTER = "<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @MGB_NOT_FREE1</code>"
+FOOTER = "<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @MGB_NOT_FREE2</code>"
 
 TRUTH_LIST = [
     "Is group mein sabse zyada cute kaun lagta hai? Naam batao!",
@@ -61,7 +61,7 @@ def _btn(text: str, url: str = None, callback_data: str = None, style: str = "pr
 def get_brand_html_btns() -> str:
     return (
         '<tg-button-row align="center">'
-        '<tg-button type="url" style="primary" url="https://t.me/MGB_NOT_FREE1">👑 𝐎𝐖𝐍𝐄𝐑</tg-button>'
+        '<tg-button type="url" style="primary" url="https://t.me/MGB_NOT_FREE2">👑 𝐎𝐖𝐍𝐄𝐑</tg-button>'
         '<tg-button type="url" style="success" url="https://t.me/ZOYA_SUPPROT">🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒</tg-button>'
         '</tg-button-row>'
     )
@@ -69,7 +69,7 @@ def get_brand_html_btns() -> str:
 def get_brand_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
-            _btn("👑 𝐎𝐖𝐍𝐄𝐑", url="https://t.me/MGB_NOT_FREE1", style="primary"),
+            _btn("👑 𝐎𝐖𝐍𝐄𝐑", url="https://t.me/MGB_NOT_FREE2", style="primary"),
             _btn("🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒", url="https://t.me/ZOYA_SUPPROT", style="success"),
         ]
     ])
