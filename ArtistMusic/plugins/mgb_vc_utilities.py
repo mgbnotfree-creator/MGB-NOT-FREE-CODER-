@@ -41,7 +41,7 @@ WHISPERS = {}                      # {wid: {"sender": int, "target_id": int, "ta
 QUIZ_SCORES = defaultdict(int)     # {user_id: points}
 AUTOCLEAN_CHATS = set()            # {chat_id}
 
-FOOTER = "<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @MGB_NOT_FREE</code>"
+FOOTER = "<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @MGB_NOT_FREE1</code>"
 
 QUIZ_BANK = [
     {
@@ -427,7 +427,7 @@ def _build_quote_sticker(name: str, text: str, dp_bytes: bytes = None) -> io.Byt
         draw.text((135, y), line, fill=(245, 245, 255), font=f_txt)
         y += 30
 
-    draw.text((290, 232), "@MGB_NOT_FREE", fill=(140, 140, 180), font=f_wm)
+    draw.text((290, 232), "@MGB_NOT_FREE1", fill=(140, 140, 180), font=f_wm)
 
     out = io.BytesIO()
     out.name = "mgb_quote.webp"
