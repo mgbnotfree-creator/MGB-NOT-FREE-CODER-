@@ -201,7 +201,6 @@ def _make_dual_card(dp1: Image.Image, dp2: Image.Image, name1: str, name2: str) 
     bg.convert("RGB").save(out, "JPEG", quality=95)
     out.seek(0)
     return out
-
 # ── 1. SMART AFK CARD (/afk) & MESSAGE TRACKER ────────────────
 def _fmt_time(sec: int) -> str:
     m, s = divmod(int(sec), 60)
@@ -230,13 +229,11 @@ async def group_watcher(client, message: Message):
     if not user:
         return
 
-    # Leaderboard Tracker
     MSG_COUNTS[message.chat.id][user.id] += 1
     USER_NAMES[user.id] = user.first_name
     if message.voice or message.audio:
         VC_POINTS[message.chat.id][user.id] += 3
 
-    # Remove AFK if sender speaks
     if user.id in AFK_USERS and not (message.text and message.text.lower().startswith(("/afk", "!afk", ".afk"))):
         info = AFK_USERS.pop(user.id)
         dur = _fmt_time(time.time() - info["time"])
@@ -246,7 +243,6 @@ async def group_watcher(client, message: Message):
             parse_mode=enums.ParseMode.HTML,
         )
 
-    # Check if replied user is AFK
     if message.reply_to_message and message.reply_to_message.from_user:
         t_id = message.reply_to_message.from_user.id
         if t_id in AFK_USERS:
@@ -427,6 +423,38 @@ async def truth_dare_cmd(client, message: Message):
         parse_mode=enums.ParseMode.HTML,
     )
 
+@bot.on_callback_query(filters.regex(r"^mgb_td_(truth|dare)$"))
+async def truth_dare_cb(client, query: CallbackQuery):
+    is_truth = query.matches[0].group(1) == "truth"
+    q = random.choice(TRUTH_LIST if is_truth else DARE_LIST)
+    tag = "🔥 𝐓𝐑𝐔𝐓𝐇" if is_truth else "⚡ 𝐃𝐀𝐑𝐄"
+    await query.message.edit_text(
+        f"<blockquote><b>{tag} 𝐂𝐇𝐀𝐋𝐋𝐄𝐍𝐆𝐄</b></blockquote>\n\n"
+        f"👤 <b>Player:</b> {query.from_user.mention}\n"
+        f"💬 <b>Task:</b> <code>{q}</code>\n\n{FOOTER}",
+        reply_markup=_td_kb(),
+        parse_mode=enums.ParseMode.HTML,
+    )
+
+# ── 7. COLORED BUTTON GAME: ROCK PAPER SCISSORS (/rps) ────────
+def _rps_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            _btn("🪨 𝐑𝐎𝐂𝐊", callback_data="mgb_rps_rock", style="primary"),
+            _btn("📄 𝐏𝐀𝐏𝐄𝐑", callback_data="mgb_rps_paper", style="success"),
+            _btn("✂️ 𝐒𝐂𝐈𝐒𝐒𝐎𝐑", callback_data="mgb_rps_scissor", style="danger"),
+        ]
+    ])
+
+@bot.on_message(filters.command(["rps", "game"], prefixes=["/", "!", "."]))
+async def rps_cmd(client, message: Message):
+    await message.reply_text(
+        f"<blockquote><b>🎮 𝐌𝐆𝐁 𝐂𝐎𝐋𝐎𝐑𝐄𝐃 𝐁𝐔𝐓𝐓𝐎𝐍 𝐆𝐀𝐌𝐄</b></blockquote>\n\n"
+        f"👇 <b>Apna move chunein ({message.from_user.mention}):</b>\n\n{FOOTER}",
+        reply_markup=_rps_kb(),
+        parse_mode=enums.ParseMode.HTML,
+    )
+
 @bot.on_callback_query(filters.regex(r"^mgb_rps_(rock|paper|scissor)$"))
 async def rps_cb(client, query: CallbackQuery):
     u_move = query.matches[0].group(1)
@@ -447,3 +475,4 @@ async def rps_cb(client, query: CallbackQuery):
         reply_markup=_rps_kb(),
         parse_mode=enums.ParseMode.HTML,
     )
+    
