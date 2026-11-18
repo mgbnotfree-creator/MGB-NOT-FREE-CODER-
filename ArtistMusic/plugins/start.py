@@ -88,8 +88,8 @@ async def _send_rich_start(chat_id: int, photo_url: str, text: str):
         f'<tg-button type="url" style="success" url="https://t.me/{app.username}?start=help">ㅤㅤHᴇʟᴘㅤㅤ</tg-button>'
         f'</tg-button-row>'
         f'<tg-button-row align="center">'
-        f'<tg-button type="url" style="primary" url="https://t.me/MGB_CODER">ㅤSᴜᴘᴘᴏʀᴛㅤ</tg-button>'
-        f'<tg-button type="url" style="danger" url="https://t.me/MGB_CODER">ㅤCʜᴀɴɴᴇʟㅤ</tg-button>'
+        f'<tg-button type="url" style="primary" url="https://t.me/ZOYA_SUPPROT">ㅤSᴜᴘᴘᴏʀᴛㅤ</tg-button>'
+        f'<tg-button type="url" style="danger" url="https://t.me/RIYA_MUSIC_BOT_786">ㅤCʜᴀɴɴᴇʟㅤ</tg-button>'
         f'</tg-button-row>'
     )
     rich_message = {
