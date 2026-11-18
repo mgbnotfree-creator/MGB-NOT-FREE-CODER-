@@ -31,7 +31,7 @@ MSG_COUNTS = defaultdict(lambda: defaultdict(int))  # {chat_id: {user_id: count}
 USER_NAMES = {}  # {user_id: str}
 VC_POINTS = defaultdict(lambda: defaultdict(int))   # {chat_id: {user_id: minutes}}
 
-FOOTER = "<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @MGB_NOT_FREE</code>"
+FOOTER = "<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @MGB_NOT_FREE1</code>"
 
 TRUTH_LIST = [
     "Is group mein sabse zyada cute kaun lagta hai? Naam batao!",
@@ -61,16 +61,16 @@ def _btn(text: str, url: str = None, callback_data: str = None, style: str = "pr
 def get_brand_html_btns() -> str:
     return (
         '<tg-button-row align="center">'
-        '<tg-button type="url" style="primary" url="https://t.me/MGB_NOT_FREE">👑 𝐎𝐖𝐍𝐄𝐑</tg-button>'
-        '<tg-button type="url" style="success" url="https://t.me/MGB_CODER">🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒</tg-button>'
+        '<tg-button type="url" style="primary" url="https://t.me/MGB_NOT_FREE1">👑 𝐎𝐖𝐍𝐄𝐑</tg-button>'
+        '<tg-button type="url" style="success" url="https://t.me/ZOYA_SUPPROT">🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒</tg-button>'
         '</tg-button-row>'
     )
 
 def get_brand_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
-            _btn("👑 𝐎𝐖𝐍𝐄𝐑", url="https://t.me/MGB_NOT_FREE", style="primary"),
-            _btn("🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒", url="https://t.me/MGB_CODER", style="success"),
+            _btn("👑 𝐎𝐖𝐍𝐄𝐑", url="https://t.me/MGB_NOT_FREE1", style="primary"),
+            _btn("🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒", url="https://t.me/ZOYA_SUPPROT", style="success"),
         ]
     ])
 
@@ -166,7 +166,7 @@ def _make_single_card(dp: Image.Image, badge: str, title: str, line1: str, line2
     draw.text((355, 155), title[:22], fill=(255, 255, 255), font=f_title)
     draw.text((355, 225), line1[:36], fill=(210, 215, 240), font=f_sub)
     draw.text((355, 275), line2[:36], fill=(160, 230, 255), font=f_sub)
-    draw.text((355, 375), "MGB NOT FREE CODER  |  t.me/MGB_CODER", fill=(*accent, 255), font=f_foot)
+    draw.text((355, 375), "MGB NOT FREE CODER  |  t.me/ZOYA_SUPPROT", fill=(*accent, 255), font=f_foot)
 
     out = io.BytesIO()
     out.name = "mgb_card.jpg"
