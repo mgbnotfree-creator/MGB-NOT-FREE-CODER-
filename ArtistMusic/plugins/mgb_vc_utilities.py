@@ -41,7 +41,7 @@ WHISPERS = {}                      # {wid: {"sender": int, "target_id": int, "ta
 QUIZ_SCORES = defaultdict(int)     # {user_id: points}
 AUTOCLEAN_CHATS = set()            # {chat_id}
 
-FOOTER = "<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @MGB_NOT_FREE1</code>"
+FOOTER = "<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @MGB_NOT_FREE2</code>"
 
 QUIZ_BANK = [
     {
