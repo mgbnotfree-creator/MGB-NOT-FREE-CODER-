@@ -57,9 +57,9 @@ AUTOCLEAN_CHATS = set()
 
 SCORE_BOARD_STATS = defaultdict(lambda: {"four": 0, "six": 0, "wicket": 0, "last_event": "LIVE READY"})
 LIVE_CRIC_LAST_STATE = {}
+LIVE_SCORE_TASKS = {}
 AUTO_SPEAKER_TASKS = {}
 AUTO_SPEAKER_STATE = {}
-AUTO_46_CHAT_COOLDOWN = {}
 
 BGM_PRESETS = {
     "bgmi": ("🎮 BGMI Royal Entry BGM", ["PUBG Mobile Theme", "Alan Walker On My Way", "KGF Theme Ravi Basrur"]),
@@ -84,14 +84,7 @@ QUIZ_BANK = [
     {"q": "Ghungroo Arijit Singh War", "opts": ["War", "Fighter", "Bang Bang", "Dhoom 3"], "ans": 0},
 ]
 
-SFX_TEXTS = {
-    "clap": "Waah bhai waah! Zabardast taaliyan!",
-    "bruh": "Bruh! Yeh kya kar diya bhai!",
-    "drum": "Dum dum tss! Drumroll please!",
-    "laugh": "Hahaha! Bhai sahab, gazab comedy!",
-}
-
-# ── 🔘 COLORED HTML BUTTON HTTP HELPERS ───────────────────────
+# ── 🔘 HTML COLORED BUTTON ENGINE (sendRichMessage + Fallback)
 def _cbtn(text: str, style: str = "primary", callback_data: str = None, url: str = None) -> dict:
     btn = {"text": text, "style": style}
     if url:
@@ -99,6 +92,25 @@ def _cbtn(text: str, style: str = "primary", callback_data: str = None, url: str
     elif callback_data:
         btn["callback_data"] = callback_data
     return btn
+
+def _rows_to_rich_html(rows: list) -> str:
+    if not rows:
+        return ""
+    out = []
+    for row in rows:
+        btns_html = []
+        for b in row:
+            st = b.get("style", "primary")
+            txt = html.escape(str(b.get("text", "Button")))
+            if b.get("url"):
+                u = html.escape(str(b["url"]), quote=True)
+                btns_html.append(f'<tg-button type="url" style="{st}" url="{u}">{txt}</tg-button>')
+            elif b.get("callback_data"):
+                cd = html.escape(str(b["callback_data"]), quote=True)
+                btns_html.append(f'<tg-button type="callback" style="{st}" data="{cd}">{txt}</tg-button>')
+        if btns_html:
+            out.append(f'<tg-button-row align="center">{"".join(btns_html)}</tg-button-row>')
+    return "".join(out)
 
 async def _bot_api(client, method: str, payload: dict):
     token = getattr(client, "bot_token", None)
@@ -115,6 +127,18 @@ async def _bot_api(client, method: str, payload: dict):
     return None
 
 async def send_colored_msg(client, chat_id: int, text: str, rows: list, reply_to: int = None):
+    # 1. Try Rich Message with REAL HTML Colored Buttons (<tg-button>)
+    rich_btns = _rows_to_rich_html(rows)
+    if rich_btns:
+        rich_html = text.replace("\n", "<br>") + "<br><br>" + rich_btns
+        rich_payload = {"chat_id": chat_id, "rich_message": {"html": rich_html}}
+        if reply_to:
+            rich_payload["reply_to_message_id"] = reply_to
+        res = await _bot_api(client, "sendRichMessage", rich_payload)
+        if res:
+            return res.get("message_id")
+
+    # 2. Fallback to standard sendMessage
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML", "reply_markup": {"inline_keyboard": rows}}
     if reply_to:
         payload["reply_to_message_id"] = reply_to
@@ -125,6 +149,19 @@ async def send_colored_msg(client, chat_id: int, text: str, rows: list, reply_to
     return m.id
 
 async def edit_colored_msg(client, chat_id: int, msg_id: int, text: str, rows: list = None):
+    # 1. Try editRichMessage for REAL HTML Colored Buttons
+    if rows is not None:
+        rich_btns = _rows_to_rich_html(rows)
+        rich_html = text.replace("\n", "<br>") + (("<br><br>" + rich_btns) if rich_btns else "")
+        res = await _bot_api(
+            client,
+            "editRichMessage",
+            {"chat_id": chat_id, "message_id": msg_id, "rich_message": {"html": rich_html}},
+        )
+        if res:
+            return res
+
+    # 2. Fallback to editMessageText
     payload = {"chat_id": chat_id, "message_id": msg_id, "text": text, "parse_mode": "HTML"}
     if rows is not None:
         payload["reply_markup"] = {"inline_keyboard": rows}
@@ -227,11 +264,11 @@ async def _get_real_bgm_mp3(pref: str):
             return label, mp3
     return label, None
 
-async def _make_sfx_mp3(text: str) -> bytes:
+async def _make_voice_alert_mp3(text: str) -> bytes:
     def _gen():
         b = io.BytesIO()
         gTTS(text=text, lang="hi", tld="co.in", slow=False).write_to_fp(b)
-        return _convert_to_clean_mp3(b.getvalue(), 10)
+        return _convert_to_clean_mp3(b.getvalue(), 8)
     return await asyncio.to_thread(_gen)
 
 # ── 1. DEMOCRACY VOTE-TO-SKIP (/voteskip) ─────────────────────
@@ -332,7 +369,7 @@ async def karaoke_cb(client, query: CallbackQuery):
         _karaoke_rows(),
     )
 
-# ── 3. REAL BGMI ENTRY BGM & AUTO GROUP JOIN BANNER + MUSIC ───
+# ── 3. REAL BGMI / KGF ENTRY BGM (ZERO AI VOICE) ──────────────
 def _entry_bgm_rows(uid: int) -> list:
     return [
         [
@@ -391,7 +428,7 @@ async def entry_bgm_cb(client, query: CallbackQuery):
         )
 
     pref = USER_BGM_PREF.get(uid, "bgmi")
-    await query.answer("🎵 Real BGM Music load ho raha hai...", show_alert=False)
+    await query.answer("🎵 Real BGM load ho raha hai...", show_alert=False)
     label, mp3 = await _get_real_bgm_mp3(pref)
     if not mp3:
         return await query.answer("❌ BGM fetch nahi ho paya, dobara try karein!", show_alert=True)
@@ -437,14 +474,40 @@ async def group_join_bgm_handler(client, message: Message):
         if mp3:
             await send_colored_audio(
                 client, message.chat.id, mp3, label, f"@{OWNER_UNAME}", 20,
-                f"<blockquote><b>🎮 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌</b></blockquote>\n\n"
-                f"🔥 <b>{html.escape(member.first_name)}</b> ki Royal Entry ho chuki hai!\n\n{FOOTER}",
+                f"<blockquote><b>🎮 𝐑𝐎𝐘𝐀𝐋 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌</b></blockquote>\n\n"
+                f"🔥 <b>{html.escape(member.first_name)}</b> ki entry par asli BGM baj raha hai!\n\n{FOOTER}",
                 [[
                     _cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="primary", url=f"https://t.me/{OWNER_UNAME}"),
                     _cbtn("🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒", style="success", url=f"https://t.me/{CHANNEL_UNAME}"),
                 ]],
             )
-# ── 4. LIVE MEME SOUNDBOARD (/sfx) ────────────────────────────
+# ── 4. REAL MEME SOUNDBOARD (/sfx) — ZERO AI VOICE ───────────
+SFX_URLS = {
+    "clap": "https://www.myinstants.com/media/sounds/applause-2.mp3",
+    "bruh": "https://www.myinstants.com/media/sounds/movie_1.mp3",
+    "drum": "https://www.myinstants.com/media/sounds/badumtss.mp3",
+    "laugh": "https://www.myinstants.com/media/sounds/risada-kiko.mp3",
+}
+SFX_AUDIO_CACHE = {}
+
+async def _get_real_sfx_mp3(key: str):
+    if key in SFX_AUDIO_CACHE:
+        return SFX_AUDIO_CACHE[key]
+    url = SFX_URLS.get(key)
+    if not url:
+        return None
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as s:
+            async with s.get(url, headers={"User-Agent": "Mozilla/5.0"}) as r:
+                if r.status == 200:
+                    raw = await r.read()
+                    if len(raw) > 1000:
+                        SFX_AUDIO_CACHE[key] = raw
+                        return raw
+    except Exception:
+        pass
+    return None
+
 def _sfx_rows() -> list:
     return [
         [
@@ -461,18 +524,20 @@ def _sfx_rows() -> list:
 async def sfx_cmd(client, message: Message):
     await send_colored_msg(
         client, message.chat.id,
-        f"<blockquote><b>🔊 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐌𝐄𝐌𝐄 𝐒𝐎𝐔𝐍𝐃𝐁𝐎𝐀𝐑𝐃</b></blockquote>\n\n👇 <b>Instant effect ke liye button dabayein:</b>\n\n{FOOTER}",
+        f"<blockquote><b>🔊 𝐌𝐆𝐁 𝐑𝐄𝐀𝐋 𝐒𝐎𝐔𝐍𝐃𝐁𝐎𝐀𝐑𝐃</b></blockquote>\n\n👇 <b>Asli sound effect ke liye button dabayein:</b>\n\n{FOOTER}",
         _sfx_rows(), reply_to=message.id,
     )
 
 @bot.on_callback_query(filters.regex(r"^mgb_sfx_(clap|bruh|drum|laugh)$"))
 async def sfx_cb(client, query: CallbackQuery):
     key = query.matches[0].group(1)
-    await query.answer(f"🔊 Sending {key.upper()}...", show_alert=False)
-    mp3 = await _make_sfx_mp3(SFX_TEXTS[key])
+    await query.answer(f"🔊 Real {key.upper()} sound load ho raha hai...", show_alert=False)
+    mp3 = await _get_real_sfx_mp3(key)
+    if not mp3:
+        return await query.answer("❌ Sound fetch nahi ho paya, dobara try karein!", show_alert=True)
     await send_colored_audio(
-        client, query.message.chat.id, mp3, f"SFX • {key.upper()}", f"@{OWNER_UNAME}", 4,
-        f"🔊 <b>SFX:</b> <code>{key.upper()}</code> by <b>{html.escape(query.from_user.first_name)}</b>\n\n{FOOTER}",
+        client, query.message.chat.id, mp3, f"Real SFX • {key.upper()}", f"@{OWNER_UNAME}", 4,
+        f"🔊 <b>Real SFX:</b> <code>{key.upper()}</code> by <b>{html.escape(query.from_user.first_name)}</b>\n\n{FOOTER}",
         [[_cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="success", url=f"https://t.me/{OWNER_UNAME}")]],
     )
 
@@ -777,19 +842,21 @@ async def reels_dl_cmd(client, message: Message):
             except Exception:
                 pass
 
-# ── 9. /score SCOREBOARD MENU + 4 / 6 / WICKET VOICE & POP-UP ─
+# ── 9. LIVE AUTO-REFRESH /score + 4 / 6 / WICKET VOICE & BANNER
 async def _fetch_current_score_line() -> str:
+    ts = int(time.time())
+    headers = {"User-Agent": "Mozilla/5.0", "Cache-Control": "no-cache", "Pragma": "no-cache"}
     try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as s:
-            async with s.get("https://static.cricinfo.com/rss/livescores.xml") as r:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6)) as s:
+            async with s.get(f"https://static.cricinfo.com/rss/livescores.xml?t={ts}", headers=headers) as r:
                 if r.status == 200:
                     txt = await r.text()
                     titles = re.findall(r"<title>(.*?)</title>", txt)[1:3]
                     if titles:
-                        return " | ".join(t.strip() for t in titles if t.strip())[:140]
+                        return " | ".join(html.unescape(t).strip() for t in titles if t.strip())[:150]
     except Exception:
         pass
-    return "Live Scoreboard Active! Six! Six! Six!"
+    return "No Live Match Running Right Now"
 
 def _score_menu_rows() -> list:
     return [
@@ -800,23 +867,24 @@ def _score_menu_rows() -> list:
         ],
         [
             _cbtn("🔄 𝐑𝐄𝐅𝐑𝐄𝐒𝐇", style="success", callback_data="mgb_sc_open"),
-            _cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="primary", url=f"https://t.me/{OWNER_UNAME}"),
+            _cbtn("⏹ 𝐒𝐓𝐎𝐏 𝐋𝐈𝐕𝐄", style="danger", callback_data="mgb_sc_stop"),
         ],
     ]
 
-async def _build_full_scoreboard_text(chat_id: int) -> str:
+async def _build_full_scoreboard_text(chat_id: int, live_line: str = None) -> str:
     st = SCORE_BOARD_STATS[chat_id]
-    live_line = await _fetch_current_score_line()
+    line = live_line or await _fetch_current_score_line()
     now = datetime.now(IST).strftime("%I:%M:%S %p")
+    auto_st = "🟢 AUTO-REFRESH ON (15s)" if chat_id in LIVE_SCORE_TASKS else "⚪ MANUAL"
     return (
         f"🌟✨🌟 <b>𝐒𝐂𝐎𝐑𝐄𝐁𝐎𝐀𝐑𝐃 𝐌𝐄𝐍𝐔 (/score)</b> 🌟✨🌟\n"
         f"<blockquote><b>🏏 𝐋𝐈𝐕𝐄 𝐌𝐀𝐓𝐂𝐇 𝐒𝐂𝐎𝐑𝐄𝐁𝐎𝐀𝐑𝐃</b>\n"
-        f"📊 <code>{html.escape(live_line)}</code>\n"
+        f"📊 <code>{html.escape(line)}</code>\n"
         f"🌟 <b>Sixes:</b> <code>{st['six']}</code>  |  "
         f"⚡ <b>Fours:</b> <code>{st['four']}</code>  |  "
         f"🚨 <b>Wickets:</b> <code>{st['wicket']}</code></blockquote>\n"
         f"🔥 <b>Last Action:</b> <code>{html.escape(st['last_event'])}</code>\n"
-        f"🕒 <b>Updated:</b> <code>{now}</code>  •  <b>Stream:</b> <code>Any State</code>\n\n{FOOTER}"
+        f"🕒 <b>Updated:</b> <code>{now}</code>  •  <code>{auto_st}</code>\n\n{FOOTER}"
     )
 
 async def _make_score_popup_banner(chat_id: int, event_code: str) -> io.BytesIO:
@@ -850,12 +918,12 @@ async def _trigger_score_event_voice_and_popup(client, chat_id: int, event_code:
     if event_code == "6":
         st["six"] += 1
         st["last_event"] = "SIX HUA! (6 RUNS)"
-        spoken = "Six hua! Six! Six! Bahut badhiya six laga!"
+        spoken = "Six! Six! Six! Bahut badhiya six laga!"
         emoji = "🔥"
     elif event_code == "4":
         st["four"] += 1
         st["last_event"] = "FOUR HUA! (4 RUNS)"
-        spoken = "Four hua! Four! Four! Zabardast four laga!"
+        spoken = "Four! Four! Four! Zabardast four laga!"
         emoji = "🎉"
     else:
         st["wicket"] += 1
@@ -863,6 +931,23 @@ async def _trigger_score_event_voice_and_popup(client, chat_id: int, event_code:
         spoken = "Wicket gaya! Ballebaaz out ho gaya!"
         emoji = "🚨"
 
+    # 1. Speak Six / Four / Wicket
+    mp3 = await _make_voice_alert_mp3(spoken)
+    aud_id = await send_colored_audio(
+        client,
+        chat_id,
+        mp3,
+        st["last_event"],
+        f"@{OWNER_UNAME}",
+        4,
+        f"🔊 <b>{html.escape(st['last_event'])}</b>\n\n{FOOTER}",
+        _score_menu_rows(),
+        reply_to=reply_to,
+    )
+    if aud_id:
+        await _pop_reaction(client, chat_id, aud_id, emoji)
+
+    # 2. Image Pop-Up Banner right after Voice
     banner_bio = await _make_score_popup_banner(chat_id, event_code)
     try:
         from ArtistMusic.plugins.mgb_viral_cards import send_rich_card
@@ -881,51 +966,64 @@ async def _trigger_score_event_voice_and_popup(client, chat_id: int, event_code:
     if pop_id:
         await _pop_reaction(client, chat_id, pop_id, emoji)
 
-    mp3 = await _make_sfx_mp3(spoken)
-    aud_id = await send_colored_audio(
-        client,
-        chat_id,
-        mp3,
-        st["last_event"],
-        f"@{OWNER_UNAME}",
-        4,
-        f"🔊 <b>{html.escape(st['last_event'])}</b>\n\n{FOOTER}",
-        _score_menu_rows(),
-        reply_to=pop_id or reply_to,
-    )
-    if aud_id:
-        await _pop_reaction(client, chat_id, aud_id, emoji)
+async def _check_and_fire_live_event(client, chat_id: int, raw_txt: str, ref_msg_id: int = None):
+    m = re.search(r"(\d+)/(\d+)", raw_txt)
+    if not m:
+        return
+    runs, wkts = int(m.group(1)), int(m.group(2))
+    prev = LIVE_CRIC_LAST_STATE.get(chat_id)
+    if prev:
+        if wkts > prev["wkts"]:
+            await _trigger_score_event_voice_and_popup(client, chat_id, "w", reply_to=ref_msg_id)
+        elif runs - prev["runs"] == 6:
+            await _trigger_score_event_voice_and_popup(client, chat_id, "6", reply_to=ref_msg_id)
+        elif runs - prev["runs"] == 4:
+            await _trigger_score_event_voice_and_popup(client, chat_id, "4", reply_to=ref_msg_id)
+    LIVE_CRIC_LAST_STATE[chat_id] = {"runs": runs, "wkts": wkts}
 
 @bot.on_message(filters.command(["score", "cricket"], prefixes=["/", "!", "."]))
 async def open_scoreboard_menu_cmd(client, message: Message):
     chat_id = message.chat.id
-    txt = await _build_full_scoreboard_text(chat_id)
-    mid = await send_colored_msg(client, chat_id, txt, _score_menu_rows(), reply_to=message.id)
+    if chat_id in LIVE_SCORE_TASKS:
+        LIVE_SCORE_TASKS.pop(chat_id).cancel()
+
+    raw_txt = await _fetch_current_score_line()
+    mid = await send_colored_msg(client, chat_id, await _build_full_scoreboard_text(chat_id, raw_txt), _score_menu_rows(), reply_to=message.id)
     if mid:
         await _pop_reaction(client, chat_id, mid, "🔥")
 
-    raw_txt = await _fetch_current_score_line()
-    m = re.search(r"(\d+)/(\d+)", raw_txt)
-    if m:
-        runs, wkts = int(m.group(1)), int(m.group(2))
-        prev = LIVE_CRIC_LAST_STATE.get(chat_id)
-        if prev:
-            if wkts > prev["wkts"]:
-                await _trigger_score_event_voice_and_popup(client, chat_id, "w", reply_to=mid)
-            elif runs - prev["runs"] == 6:
-                await _trigger_score_event_voice_and_popup(client, chat_id, "6", reply_to=mid)
-            elif runs - prev["runs"] == 4:
-                await _trigger_score_event_voice_and_popup(client, chat_id, "4", reply_to=mid)
-        LIVE_CRIC_LAST_STATE[chat_id] = {"runs": runs, "wkts": wkts}
+    await _check_and_fire_live_event(client, chat_id, raw_txt, ref_msg_id=mid)
 
-@bot.on_callback_query(filters.regex(r"^mgb_sc_(open|hit_(4|6|w))$"))
+    async def _auto_score_loop():
+        try:
+            for _ in range(40):
+                await asyncio.sleep(15)
+                fresh_line = await _fetch_current_score_line()
+                await _check_and_fire_live_event(client, chat_id, fresh_line, ref_msg_id=mid)
+                await edit_colored_msg(client, chat_id, mid, await _build_full_scoreboard_text(chat_id, fresh_line), _score_menu_rows())
+        except asyncio.CancelledError:
+            pass
+        finally:
+            LIVE_SCORE_TASKS.pop(chat_id, None)
+
+    LIVE_SCORE_TASKS[chat_id] = asyncio.create_task(_auto_score_loop())
+
+@bot.on_callback_query(filters.regex(r"^mgb_sc_(open|stop|hit_(4|6|w))$"))
 async def scoreboard_menu_cb(client, query: CallbackQuery):
     data = query.matches[0].group(0)
     chat_id = query.message.chat.id
 
-    if data == "mgb_sc_open":
-        await query.answer("🔄 Scoreboard Refreshed!", show_alert=False)
+    if data == "mgb_sc_stop":
+        if chat_id in LIVE_SCORE_TASKS:
+            LIVE_SCORE_TASKS.pop(chat_id).cancel()
+        await query.answer("⏹ Auto-Refresh Stopped!", show_alert=False)
         return await edit_colored_msg(client, chat_id, query.message.id, await _build_full_scoreboard_text(chat_id), _score_menu_rows())
+
+    if data == "mgb_sc_open":
+        fresh_line = await _fetch_current_score_line()
+        await _check_and_fire_live_event(client, chat_id, fresh_line, ref_msg_id=query.message.id)
+        await query.answer("🔄 Live Score Refreshed!", show_alert=False)
+        return await edit_colored_msg(client, chat_id, query.message.id, await _build_full_scoreboard_text(chat_id, fresh_line), _score_menu_rows())
 
     evt = data.split("_")[-1]
     await query.answer("🔊 Voice + Banner Pop-Up!", show_alert=False)
@@ -973,7 +1071,7 @@ async def _auto_speaker_fire(client, chat_id: int, event_kind: str, player_name:
         badge_txt = "🚨 WICKET!"
         react_emoji = "😱"
 
-    mp3 = await _make_sfx_mp3(spoken)
+    mp3 = await _make_voice_alert_mp3(spoken)
     aud_id = await send_colored_audio(
         client,
         chat_id,
@@ -1006,8 +1104,9 @@ async def _auto_speaker_loop(client, chat_id: int):
         while True:
             await asyncio.sleep(8)
             try:
+                ts = int(time.time())
                 async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6)) as s:
-                    async with s.get("https://static.cricinfo.com/rss/livescores.xml") as r:
+                    async with s.get(f"https://static.cricinfo.com/rss/livescores.xml?t={ts}", headers={"Cache-Control": "no-cache"}) as r:
                         if r.status != 200:
                             continue
                         xml_txt = await r.text()
