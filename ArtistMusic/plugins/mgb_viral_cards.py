@@ -3,6 +3,7 @@
 #               © 2026 @MGB_NOT_FREE_1 🍓
 # ═══════════════════════════════════════════════════════════════
 
+import os
 import io
 import time
 import json
@@ -27,6 +28,10 @@ OWNER_UNAME = "MGB_NOT_FREE_1"
 CHANNEL_UNAME = "MGB_CODER"
 FOOTER = f"<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @{OWNER_UNAME}</code>"
 IST = timezone(timedelta(hours=5, minutes=30))
+
+# Blank Royal Gold & Purple AI Banner Template URL (ya repo mein mgb_card_bg.png rakhein)
+CARD_TEMPLATE_URL = ""
+_CACHED_TEMPLATE = None
 
 AFK_USERS = {}
 MARRIAGES = {}
@@ -132,7 +137,7 @@ async def send_rich_card(client, chat_id: int, photo_bio: io.BytesIO, caption: s
                 form.add_field("chat_id", str(chat_id))
                 form.add_field("rich_message", json.dumps(payload, ensure_ascii=False))
                 photo_bio.seek(0)
-                form.add_field("card_img", photo_bio.read(), filename="mgb_3d.jpg", content_type="image/jpeg")
+                form.add_field("card_img", photo_bio.read(), filename="mgb_banner.jpg", content_type="image/jpeg")
                 async with aiohttp.ClientSession() as s:
                     async with s.post(f"https://api.telegram.org/bot{token}/sendRichMessage", data=form) as r:
                         res = await r.json()
@@ -148,7 +153,7 @@ async def send_rich_card(client, chat_id: int, photo_bio: io.BytesIO, caption: s
             form.add_field("parse_mode", "HTML")
             form.add_field("reply_markup", json.dumps({"inline_keyboard": json_rows or _brand_json_kb()}))
             photo_bio.seek(0)
-            form.add_field("photo", photo_bio.read(), filename="mgb_3d.jpg", content_type="image/jpeg")
+            form.add_field("photo", photo_bio.read(), filename="mgb_banner.jpg", content_type="image/jpeg")
             async with aiohttp.ClientSession() as s:
                 async with s.post(f"https://api.telegram.org/bot{token}/sendPhoto", data=form) as r:
                     res = await r.json()
@@ -161,12 +166,52 @@ async def send_rich_card(client, chat_id: int, photo_bio: io.BytesIO, caption: s
     m = await client.send_photo(chat_id, photo_bio, caption=caption, parse_mode=enums.ParseMode.HTML)
     return m.id
 
-# ── 🎨 3D GLOWING BOLD PIL CARD ENGINE ────────────────────────
-def _clean_pil_text(text: str, limit: int = 24) -> str:
-    norm = unicodedata.normalize("NFKC", str(text or "VIP User"))
-    cleaned = "".join(ch for ch in norm if 32 <= ord(ch) <= 126)
-    cleaned = " ".join(cleaned.split()).strip()
-    return (cleaned or "VIP MEMBER")[:limit]
+# ── 🎨 ROYAL GOLD & PURPLE BANNER ENGINE (ALL CARDS) ──────────
+FANCY_MAP = str.maketrans({
+    "ᴀ": "A", "ʙ": "B", "ᴄ": "C", "ᴅ": "D", "ᴇ": "E", "ꜰ": "F", "ғ": "F",
+    "ɢ": "G", "ʜ": "H", "ɪ": "I", "ᴊ": "J", "ᴋ": "K", "ʟ": "L", "ᴍ": "M",
+    "ɴ": "N", "ᴏ": "O", "ᴘ": "P", "ǫ": "Q", "ʀ": "R", "ꜱ": "S", "ᴛ": "T",
+    "ᴜ": "U", "ᴠ": "V", "ᴡ": "W", "x": "X", "ʏ": "Y", "ᴢ": "Z",
+    "Λ": "A", "λ": "A", "ʌ": "A", "χ": "X", "Χ": "X", "×": "X",
+    "Δ": "A", "Σ": "E", "Ω": "O", "β": "B", "α": "A",
+})
+
+def _clean_pil_text(text: str, limit: int = 26) -> str:
+    s = str(text or "VIP MEMBER").translate(FANCY_MAP)
+    s = unicodedata.normalize("NFKC", s)
+    s = "".join(ch for ch in s if 32 <= ord(ch) <= 126 and ch not in "[](){}")
+    s = " ".join(s.split()).strip()
+    return (s.upper() if len(s) <= 22 else s)[:limit] or "VIP MEMBER"
+
+async def _get_template_bg():
+    global _CACHED_TEMPLATE
+    if _CACHED_TEMPLATE is not None:
+        return _CACHED_TEMPLATE.copy()
+
+    for path in (
+        "mgb_card_bg.png",
+        "mgb_card_bg.jpg",
+        "assets/mgb_card_bg.png",
+        "ArtistMusic/assets/mgb_card_bg.png",
+    ):
+        if os.path.isfile(path):
+            try:
+                _CACHED_TEMPLATE = Image.open(path).convert("RGBA").resize((1280, 720), Image.LANCZOS)
+                return _CACHED_TEMPLATE.copy()
+            except Exception:
+                pass
+
+    if CARD_TEMPLATE_URL:
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=12)) as s:
+                async with s.get(CARD_TEMPLATE_URL) as r:
+                    if r.status == 200:
+                        raw = await r.read()
+                        _CACHED_TEMPLATE = Image.open(io.BytesIO(raw)).convert("RGBA").resize((1280, 720), Image.LANCZOS)
+                        return _CACHED_TEMPLATE.copy()
+        except Exception:
+            pass
+    return None
 
 async def _get_user_dp(client, user_id: int) -> Image.Image:
     try:
@@ -177,11 +222,11 @@ async def _get_user_dp(client, user_id: int) -> Image.Image:
             return Image.open(bio).convert("RGBA")
     except Exception:
         pass
-    img = Image.new("RGBA", (300, 300), (25, 18, 52, 255))
-    ImageDraw.Draw(img).ellipse((25, 25, 275, 275), fill=(90, 50, 210, 255))
+    img = Image.new("RGBA", (360, 360), (20, 12, 42, 255))
+    ImageDraw.Draw(img).ellipse((25, 25, 335, 335), fill=(115, 45, 220, 255))
     return img
 
-def _circle_dp(dp: Image.Image, size: int = 216) -> Image.Image:
+def _circle_dp(dp: Image.Image, size: int = 334) -> Image.Image:
     dp = dp.resize((size, size), Image.LANCZOS)
     mask = Image.new("L", (size, size), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
@@ -189,10 +234,11 @@ def _circle_dp(dp: Image.Image, size: int = 216) -> Image.Image:
     out.paste(dp, (0, 0), mask)
     return out
 
-def _load_bold_font(size: int):
+def _load_italic_font(size: int):
     for p in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-BoldItalic.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
     ):
         try:
             return ImageFont.truetype(p, size)
@@ -200,115 +246,125 @@ def _load_bold_font(size: int):
             pass
     return ImageFont.load_default()
 
-def _draw_3d_glow_text(img: Image.Image, xy: tuple, text: str, font, fill=(255, 255, 255), glow=(255, 60, 140), depth: int = 4) -> Image.Image:
+def _fit_font(text: str, max_width: int, start_size: int, min_size: int = 20):
+    dummy = ImageDraw.Draw(Image.new("RGBA", (10, 10)))
+    for sz in range(start_size, min_size - 1, -2):
+        f = _load_italic_font(sz)
+        box = dummy.textbbox((0, 0), text, font=f)
+        if (box[2] - box[0]) <= max_width:
+            return f
+    return _load_italic_font(min_size)
+
+def _draw_royal_glow(img: Image.Image, xy: tuple, text: str, font, fill=(255, 255, 255), glow=(255, 195, 45), anchor="lm", depth: int = 4) -> Image.Image:
     g_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     gd = ImageDraw.Draw(g_layer)
     x, y = xy
-    gd.text((x, y), text, font=font, fill=(*glow, 225), stroke_width=3, stroke_fill=(*glow, 185))
-    img = Image.alpha_composite(img, g_layer.filter(ImageFilter.GaussianBlur(7)))
+    gd.text((x, y), text, font=font, fill=(*glow, 235), anchor=anchor, stroke_width=4, stroke_fill=(*glow, 190))
+    img = Image.alpha_composite(img, g_layer.filter(ImageFilter.GaussianBlur(8)))
 
     d = ImageDraw.Draw(img)
-    for step in range(depth, 0, -1):
-        d.text((x + step, y + step), text, font=font, fill=(8, 6, 18, 230))
-    d.text((x, y), text, font=font, fill=fill, stroke_width=1, stroke_fill=(*glow, 140))
+    for st in range(depth, 0, -1):
+        d.text((x + st, y + st), text, font=font, fill=(5, 3, 14, 235), anchor=anchor)
+    d.text((x, y), text, font=font, fill=fill, anchor=anchor, stroke_width=1, stroke_fill=(*glow, 160))
     return img
 
-def _make_single_card(dp: Image.Image, badge: str, title: str, line1: str, line2: str, accent=(255, 60, 130)) -> io.BytesIO:
-    W, H = 980, 500
-    bg = Image.new("RGBA", (W, H), (8, 9, 20, 255))
+def _make_single_card(dp: Image.Image, badge: str, title: str, line1: str, line2: str, accent=(255, 195, 45), template_bg=None) -> io.BytesIO:
+    W, H = 1280, 720
+    if template_bg is not None:
+        bg = template_bg.copy()
+        c_dp = _circle_dp(dp, 334)
+        bg.paste(c_dp, (105, 153), c_dp)
+        d = ImageDraw.Draw(bg)
+        d.ellipse((104, 152, 440, 488), outline=(255, 220, 110, 230), width=4)
+    else:
+        bg = Image.new("RGBA", (W, H), (8, 5, 18, 255))
+        orbs = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        od = ImageDraw.Draw(orbs)
+        od.ellipse((-90, -90, 560, 560), fill=(255, 185, 25, 150))
+        od.ellipse((740, 100, 1360, 760), fill=(155, 35, 255, 160))
+        bg = Image.alpha_composite(bg, orbs.filter(ImageFilter.GaussianBlur(75)))
 
-    orbs = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    od = ImageDraw.Draw(orbs)
-    od.ellipse((-90, -90, 440, 420), fill=(*accent, 155))
-    od.ellipse((580, 130, 1080, 580), fill=(35, 140, 255, 145))
-    od.ellipse((320, 280, 740, 560), fill=(160, 40, 255, 105))
-    bg = Image.alpha_composite(bg, orbs.filter(ImageFilter.GaussianBlur(65)))
+        rim = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        ImageDraw.Draw(rim).rounded_rectangle((42, 42, W - 42, H - 42), radius=42, outline=(255, 195, 40, 255), width=8)
+        bg = Image.alpha_composite(bg, rim.filter(ImageFilter.GaussianBlur(10)))
 
-    sh = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(sh).rounded_rectangle((62, 62, W - 34, H - 30), radius=36, fill=(0, 0, 0, 215))
-    bg = Image.alpha_composite(bg, sh.filter(ImageFilter.GaussianBlur(18)))
+        d = ImageDraw.Draw(bg)
+        d.rounded_rectangle((44, 44, W - 44, H - 44), radius=40, fill=(14, 10, 28, 232), outline=(255, 205, 65, 255), width=5)
+        d.rounded_rectangle((535, 86, 1070, 190), radius=34, fill=(26, 16, 46, 235), outline=(255, 195, 45, 255), width=4)
+        d.rounded_rectangle((500, 488, 1105, 592), radius=34, fill=(24, 14, 42, 235), outline=(255, 195, 45, 255), width=4)
 
-    rim = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(rim).rounded_rectangle((46, 44, W - 46, H - 44), radius=36, outline=(*accent, 255), width=6)
-    bg = Image.alpha_composite(bg, rim.filter(ImageFilter.GaussianBlur(8)))
+        halo = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        ImageDraw.Draw(halo).ellipse((92, 140, 452, 500), fill=(255, 185, 30, 195))
+        bg = Image.alpha_composite(bg, halo.filter(ImageFilter.GaussianBlur(18)))
 
-    panel = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    pd = ImageDraw.Draw(panel)
-    pd.rounded_rectangle((48, 46, W - 48, H - 46), radius=34, fill=(18, 20, 38, 232), outline=(*accent, 240), width=3)
-    pd.polygon([(48, 46), (440, 46), (260, H - 46), (48, H - 46)], fill=(255, 255, 255, 14))
-    pd.line([(85, 48), (W - 85, 48)], fill=(255, 255, 255, 130), width=2)
-    bg = Image.alpha_composite(bg, panel)
+        c_dp = _circle_dp(dp, 334)
+        bg.paste(c_dp, (105, 153), c_dp)
+        d = ImageDraw.Draw(bg)
+        d.ellipse((102, 150, 442, 490), outline=(255, 240, 150, 240), width=4)
+        d.ellipse((96, 144, 448, 496), outline=(170, 60, 255, 255), width=5)
 
-    halo = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(halo).ellipse((86, 128, 326, 368), fill=(*accent, 195))
-    bg = Image.alpha_composite(bg, halo.filter(ImageFilter.GaussianBlur(18)))
+    t_badge = _clean_pil_text(badge, 24)
+    t_name = _clean_pil_text(title, 22)
+    t_l1 = _clean_pil_text(line1, 30)
+    t_l2 = _clean_pil_text(line2, 30)
+    t_foot = f"POWERED BY : @{OWNER_UNAME}"
 
-    d = ImageDraw.Draw(bg)
-    d.ellipse((98, 144, 322, 368), fill=(0, 0, 0, 185))
-    c_dp = _circle_dp(dp, 216)
-    bg.paste(c_dp, (98, 138), c_dp)
-    d = ImageDraw.Draw(bg)
-    d.ellipse((94, 134, 318, 358), outline=(255, 255, 255, 235), width=4)
-    d.ellipse((89, 129, 323, 363), outline=(*accent, 255), width=4)
+    f_badge = _fit_font(t_badge, 460, 40, 24)
+    f_name = _fit_font(t_name, 530, 54, 28)
+    f_l1 = _fit_font(t_l1, 560, 38, 22)
+    f_l2 = _fit_font(t_l2, 560, 36, 22)
+    f_foot = _fit_font(t_foot, 560, 30, 20)
 
-    b_glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(b_glow).rounded_rectangle((358, 84, 745, 134), radius=24, fill=(*accent, 225))
-    bg = Image.alpha_composite(bg, b_glow.filter(ImageFilter.GaussianBlur(10)))
-    d = ImageDraw.Draw(bg)
-    d.rounded_rectangle((360, 86, 742, 132), radius=22, fill=(*accent, 245), outline=(255, 255, 255, 180), width=2)
-
-    f_badge = _load_bold_font(22)
-    f_title = _load_bold_font(42)
-    f_sub = _load_bold_font(26)
-    f_foot = _load_bold_font(21)
-
-    bg = _draw_3d_glow_text(bg, (382, 96), _clean_pil_text(badge, 26), f_badge, (255, 255, 255), accent, depth=2)
-    bg = _draw_3d_glow_text(bg, (360, 158), _clean_pil_text(title, 20), f_title, (255, 255, 255), accent, depth=5)
-    bg = _draw_3d_glow_text(bg, (360, 234), _clean_pil_text(line1, 34), f_sub, (240, 245, 255), (80, 180, 255), depth=3)
-    bg = _draw_3d_glow_text(bg, (360, 286), _clean_pil_text(line2, 34), f_sub, (170, 245, 255), (0, 210, 190), depth=3)
-    bg = _draw_3d_glow_text(bg, (360, 386), f"POWERED BY : @{OWNER_UNAME}", f_foot, (255, 230, 140), accent, depth=3)
+    bg = _draw_royal_glow(bg, (802, 138), t_badge, f_badge, (255, 245, 160), (255, 175, 20), anchor="mm", depth=4)
+    bg = _draw_royal_glow(bg, (525, 232), t_name, f_name, (255, 255, 255), (190, 80, 255), anchor="lm", depth=5)
+    bg = _draw_royal_glow(bg, (525, 332), t_l1, f_l1, (255, 225, 65), (255, 155, 20), anchor="lm", depth=4)
+    bg = _draw_royal_glow(bg, (525, 426), t_l2, f_l2, (115, 238, 255), (30, 165, 255), anchor="lm", depth=4)
+    bg = _draw_royal_glow(bg, (802, 540), t_foot, f_foot, (255, 235, 110), (255, 170, 30), anchor="mm", depth=3)
 
     out = io.BytesIO()
-    out.name = "mgb_3d.jpg"
-    bg.convert("RGB").save(out, "JPEG", quality=95)
+    out.name = "mgb_banner.jpg"
+    bg.convert("RGB").save(out, "JPEG", quality=96)
     out.seek(0)
     return out
 
-def _make_dual_card(dp1: Image.Image, dp2: Image.Image, name1: str, name2: str) -> io.BytesIO:
-    W, H = 980, 500
-    bg = Image.new("RGBA", (W, H), (14, 8, 24, 255))
-    orbs = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    od = ImageDraw.Draw(orbs)
-    od.ellipse((-60, -60, 420, 420), fill=(255, 50, 130, 155))
-    od.ellipse((560, 100, 1040, 540), fill=(255, 165, 40, 135))
-    bg = Image.alpha_composite(bg, orbs.filter(ImageFilter.GaussianBlur(60)))
+def _make_dual_card(dp1: Image.Image, dp2: Image.Image, name1: str, name2: str, template_bg=None) -> io.BytesIO:
+    W, H = 1280, 720
+    if template_bg is not None:
+        bg = template_bg.copy()
+    else:
+        bg = Image.new("RGBA", (W, H), (12, 6, 24, 255))
+        orbs = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        od = ImageDraw.Draw(orbs)
+        od.ellipse((-70, -70, 520, 520), fill=(255, 55, 145, 155))
+        od.ellipse((740, 120, 1340, 720), fill=(255, 185, 35, 145))
+        bg = Image.alpha_composite(bg, orbs.filter(ImageFilter.GaussianBlur(70)))
+        d = ImageDraw.Draw(bg)
+        d.rounded_rectangle((44, 44, W - 44, H - 44), radius=40, fill=(20, 12, 36, 232), outline=(255, 195, 55, 255), width=5)
 
+    c1, c2 = _circle_dp(dp1, 240), _circle_dp(dp2, 240)
+    bg.paste(c1, (140, 160), c1)
+    bg.paste(c2, (900, 160), c2)
     d = ImageDraw.Draw(bg)
-    d.rounded_rectangle((44, 44, W - 44, H - 44), radius=34, fill=(24, 14, 40, 232), outline=(255, 80, 150, 255), width=4)
+    d.ellipse((136, 156, 384, 404), outline=(255, 225, 95), width=6)
+    d.ellipse((896, 156, 1144, 404), outline=(255, 80, 165), width=6)
 
-    c1, c2 = _circle_dp(dp1, 196), _circle_dp(dp2, 196)
-    bg.paste(c1, (105, 128), c1)
-    bg.paste(c2, (678, 128), c2)
-    d = ImageDraw.Draw(bg)
-    d.ellipse((101, 124, 305, 328), outline=(255, 220, 100), width=5)
-    d.ellipse((674, 124, 878, 328), outline=(255, 80, 150), width=5)
+    f_h = _fit_font("MARRIAGE CERTIFICATE", 650, 48, 28)
+    f_w = _fit_font("ROYAL WEDS", 320, 44, 26)
+    couple = f"{_clean_pil_text(name1, 14)}  &  {_clean_pil_text(name2, 14)}"
+    f_n = _fit_font(couple, 1050, 48, 26)
+    f_s = _fit_font(f"POWERED BY : @{OWNER_UNAME}", 650, 30, 20)
 
-    f_h = _load_bold_font(36)
-    f_n = _load_bold_font(32)
-    f_s = _load_bold_font(22)
-
-    bg = _draw_3d_glow_text(bg, (255, 62), "MARRIAGE CERTIFICATE", f_h, (255, 225, 100), (255, 70, 140), depth=4)
-    bg = _draw_3d_glow_text(bg, (430, 200), "WEDS", f_h, (255, 110, 170), (255, 40, 110), depth=4)
-    couple = f"{_clean_pil_text(name1, 13)}  &  {_clean_pil_text(name2, 13)}"
-    bg = _draw_3d_glow_text(bg, (165, 352), couple, f_n, (255, 255, 255), (255, 80, 150), depth=4)
-    bg = _draw_3d_glow_text(bg, (265, 412), f"CERTIFIED BY : @{OWNER_UNAME}", f_s, (180, 240, 255), (120, 80, 255), depth=2)
+    bg = _draw_royal_glow(bg, (640, 112), "MARRIAGE CERTIFICATE", f_h, (255, 235, 110), (255, 155, 25), anchor="mm", depth=4)
+    bg = _draw_royal_glow(bg, (640, 280), "ROYAL WEDS", f_w, (255, 120, 185), (255, 50, 120), anchor="mm", depth=4)
+    bg = _draw_royal_glow(bg, (640, 468), couple, f_n, (255, 255, 255), (185, 75, 255), anchor="mm", depth=5)
+    bg = _draw_royal_glow(bg, (640, 560), f"POWERED BY : @{OWNER_UNAME}", f_s, (255, 225, 95), (255, 160, 20), anchor="mm", depth=3)
 
     out = io.BytesIO()
-    out.name = "marriage_3d.jpg"
-    bg.convert("RGB").save(out, "JPEG", quality=95)
+    out.name = "marriage_banner.jpg"
+    bg.convert("RGB").save(out, "JPEG", quality=96)
     out.seek(0)
     return out
-# ── 1. SMART AFK CARD (/afk) & MESSAGE TRACKER ────────────────
+# ── 1. SMART AFK BANNER (/afk) & MESSAGE TRACKER ──────────────
 def _fmt_time(sec: int) -> str:
     m, s = divmod(int(sec), 60)
     h, m = divmod(m, 60)
@@ -323,7 +379,8 @@ async def set_afk_cmd(client, message: Message):
     AFK_USERS[user.id] = {"time": time.time(), "reason": reason, "name": user.first_name}
 
     dp = await _get_user_dp(client, user.id)
-    card = _make_single_card(dp, "AFK MODE ON", user.first_name, f"Reason: {reason}", "Status: Offline", (145, 75, 255))
+    tpl = await _get_template_bg()
+    card = _make_single_card(dp, "AFK MODE ON", user.first_name, f"Reason: {reason}", "Status: Offline", (145, 75, 255), template_bg=tpl)
     cap = (
         f"<blockquote><b>🌙 {html.escape(user.first_name)} अब AFK हैं!</b></blockquote>\n"
         f"💬 <b>Reason:</b> <code>{html.escape(reason)}</code>\n\n{FOOTER}"
@@ -359,7 +416,8 @@ async def group_watcher(client, message: Message):
             info = AFK_USERS[t_id]
             dur = _fmt_time(time.time() - info["time"])
             dp = await _get_user_dp(client, t_id)
-            card = _make_single_card(dp, "USER IS AFK", info["name"], f"Since: {dur}", f"Reason: {info['reason']}", (255, 130, 40))
+            tpl = await _get_template_bg()
+            card = _make_single_card(dp, "USER IS AFK", info["name"], f"Since: {dur}", f"Reason: {info['reason']}", (255, 130, 40), template_bg=tpl)
             cap = (
                 f"<blockquote><b>💤 {html.escape(info['name'])} अभी Offline हैं!</b></blockquote>\n"
                 f"⏱ <b>Since:</b> <code>{dur}</code>\n"
@@ -367,7 +425,7 @@ async def group_watcher(client, message: Message):
             )
             await send_rich_card(client, message.chat.id, card, cap)
 
-# ── 2. GROUP MARRIAGE & CERTIFICATE (1-TIME LOCK) ─────────────
+# ── 2. GROUP MARRIAGE & ROYAL BANNER (1-TIME LOCK) ────────────
 @bot.on_message(filters.command(["marry", "propose"], prefixes=["/", "!", "."]))
 async def marry_cmd(client, message: Message):
     if not message.reply_to_message or not message.reply_to_message.from_user:
@@ -427,7 +485,8 @@ async def marry_cb(client, query: CallbackQuery):
     await query.answer("💍 Shadi Mubarak Ho!", show_alert=False)
     dp1 = await _get_user_dp(client, id1)
     dp2 = await _get_user_dp(client, id2)
-    cert = _make_dual_card(dp1, dp2, u1.first_name, u2.first_name)
+    tpl = await _get_template_bg()
+    cert = _make_dual_card(dp1, dp2, u1.first_name, u2.first_name, template_bg=tpl)
 
     cap = (
         f"<blockquote><b>💍 𝐌𝐆𝐁 𝐌𝐀𝐑𝐑𝐈𝐀𝐆𝐄 𝐂𝐄𝐑𝐓𝐈𝐅𝐈𝐂𝐀𝐓𝐄</b></blockquote>\n\n"
@@ -454,16 +513,17 @@ async def divorce_cmd(client, message: Message):
         _brand_json_kb(), reply_to=message.id,
     )
 
-# ── 3. BREAKING NEWS & WANTED 3D CARDS (/news, /wanted) ───────
+# ── 3. BREAKING NEWS & WANTED ROYAL BANNERS (/news, /wanted) ─
 @bot.on_message(filters.command(["news", "wanted"], prefixes=["/", "!", "."]))
 async def news_wanted_cmd(client, message: Message):
     target = message.reply_to_message.from_user if (message.reply_to_message and message.reply_to_message.from_user) else message.from_user
     cmd = message.command[0].lower()
     dp = await _get_user_dp(client, target.id)
+    tpl = await _get_template_bg()
 
     if cmd == "news":
         headline = message.text.split(None, 1)[1] if len(message.command) > 1 else "Group mein bina gaana suney sote hue pakde gaye!"
-        card = _make_single_card(dp, "BREAKING NEWS 24x7", target.first_name, headline[:34], "LIVE REPORT : MGB TV", (245, 35, 55))
+        card = _make_single_card(dp, "BREAKING NEWS 24x7", target.first_name, headline[:30], "LIVE REPORT : MGB TV", (245, 35, 55), template_bg=tpl)
         cap = (
             f"<blockquote><b>📺 𝐌𝐆𝐁 𝐁𝐑𝐄𝐀𝐊𝐈𝐍𝐆 𝐍𝐄𝐖𝐒</b></blockquote>\n\n"
             f"👤 <b>Target:</b> <b>{html.escape(target.first_name)}</b>\n"
@@ -471,7 +531,7 @@ async def news_wanted_cmd(client, message: Message):
         )
     else:
         bounty = f"Rs. {random.randint(5, 99)},00,000"
-        card = _make_single_card(dp, "WANTED DEAD OR ALIVE", target.first_name, f"Reward: {bounty}", "CRIME : VVIP LEGEND", (245, 160, 25))
+        card = _make_single_card(dp, "WANTED DEAD OR ALIVE", target.first_name, f"Reward: {bounty}", "CRIME : VVIP LEGEND", (245, 160, 25), template_bg=tpl)
         cap = (
             f"<blockquote><b>🚨 𝐌𝐆𝐁 𝐖𝐀𝐍𝐓𝐄𝐃 𝐏𝐎𝐒𝐓𝐄𝐑</b></blockquote>\n\n"
             f"👤 <b>Criminal:</b> <b>{html.escape(target.first_name)}</b>\n"
@@ -479,7 +539,7 @@ async def news_wanted_cmd(client, message: Message):
         )
     await send_rich_card(client, message.chat.id, card, cap)
 
-# ── 4. VIP 3D PROFILE CARD (/profile) ─────────────────────────
+# ── 4. VIP ROYAL PROFILE BANNER (/profile) ────────────────────
 @bot.on_message(filters.command(["profile", "vipcard"], prefixes=["/", "!", "."]))
 async def profile_cmd(client, message: Message):
     target = message.reply_to_message.from_user if (message.reply_to_message and message.reply_to_message.from_user) else message.from_user
@@ -488,7 +548,8 @@ async def profile_cmd(client, message: Message):
     rank = "VVIP LEGEND" if msgs > 150 else ("PRO LISTENER" if msgs > 40 else "RISING STAR")
 
     dp = await _get_user_dp(client, target.id)
-    card = _make_single_card(dp, f"VIP RANK : {rank}", target.first_name, f"Chat Score: {msgs} Msgs", f"Partner: {partner}", (20, 215, 145))
+    tpl = await _get_template_bg()
+    card = _make_single_card(dp, f"VIP RANK : {rank}", target.first_name, f"Chat Score: {msgs} Msgs", f"Partner: {partner}", (20, 215, 145), template_bg=tpl)
     cap = (
         f"<blockquote><b>💎 𝐌𝐆𝐁 𝐕𝐈𝐏 𝐏𝐑𝐎𝐅𝐈𝐋𝐄 𝐂𝐀𝐑𝐃</b></blockquote>\n\n"
         f"👤 <b>User:</b> <b>{html.escape(target.first_name)}</b>\n"
@@ -520,9 +581,10 @@ async def leaderboard_cmd(client, message: Message):
     top_uid, top_score = sorted(data.items(), key=lambda x: x[1], reverse=True)[0]
     top_name = USER_NAMES.get(top_uid, "VIP Member")
     dp = await _get_user_dp(client, top_uid)
+    tpl = await _get_template_bg()
     badge = "TOP VC ADDICTS" if is_vc else "GROUP LEADERBOARD"
     unit = "Pts" if is_vc else "Msgs"
-    card = _make_single_card(dp, badge, f"#1 {top_name}", f"Top Score: {top_score} {unit}", f"Active Users: {len(data)}", (255, 85, 50))
+    card = _make_single_card(dp, badge, f"#1 {top_name}", f"Top Score: {top_score} {unit}", f"Active Users: {len(data)}", (255, 85, 50), template_bg=tpl)
     await send_rich_card(client, chat_id, card, _build_lb_text(chat_id, is_vc, live=False))
 
     key = (chat_id, "vc" if is_vc else "top")
@@ -681,4 +743,3 @@ async def rps_cb(client, query: CallbackQuery):
         f"✨ <b>Result:</b> <b>{res}</b>\n\n{FOOTER}",
         [],
     )
-    
