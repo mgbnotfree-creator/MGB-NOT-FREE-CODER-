@@ -38,6 +38,11 @@ except Exception:
     tg_call = None
     tg_queue = None
 
+try:
+    from ArtistMusic import yt as artist_yt
+except Exception:
+    artist_yt = None
+
 # ── BRANDING & STORAGE ────────────────────────────────────────
 OWNER_UNAME = "MGB_NOT_FREE_1"
 CHANNEL_UNAME = "MGB_CODER"
@@ -45,12 +50,21 @@ FOOTER = f"<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @{OWNER_UNAME}</co
 IST = timezone(timedelta(hours=5, minutes=30))
 
 VOTE_SKIP_DATA = defaultdict(set)
-ENTRY_BGMS = {}
 WHISPERS = {}
 QUIZ_SCORES = defaultdict(int)
 QUIZ_ACTIVE = {}
 LIVE_CRIC_TASKS = {}
 AUTOCLEAN_CHATS = set()
+
+BGM_PRESETS = {
+    "bgmi": ("🎮 BGMI Royal Entry BGM", ["PUBG Mobile Theme", "Alan Walker On My Way", "KGF Theme Ravi Basrur"]),
+    "kgf": ("🔥 KGF Rocky Entry BGM", ["KGF Theme Ravi Basrur", "Salaam Rocky Bhai", "Toofan KGF"]),
+    "vikram": ("⚡ Vikram Roar BGM", ["Vikram Title Track Anirudh", "Porkanda Singam Vikram"]),
+    "animal": ("🦁 Animal Entry BGM", ["Jamal Kudu Animal", "Arjan Vailly Animal"]),
+}
+USER_BGM_PREF = {}
+BGM_AUDIO_CACHE = {}
+WELCOME_BGM_OFF = set()
 
 QUIZ_BANK = [
     {"q": "Tum Hi Ho Arijit Singh Aashiqui 2", "opts": ["Aashiqui 2", "Kabir Singh", "Rockstar", "Tamasha"], "ans": 0},
@@ -175,6 +189,25 @@ async def _fetch_real_song_clip(query: str):
         pass
     return None
 
+async def _get_real_bgm_mp3(pref: str):
+    if pref in BGM_PRESETS:
+        label, queries = BGM_PRESETS[pref]
+        cache_key = f"preset:{pref}"
+    else:
+        label = f"🎵 {pref[:28]}"
+        queries = [pref, "PUBG Mobile Theme"]
+        cache_key = f"custom:{pref.lower().strip()}"
+
+    if cache_key in BGM_AUDIO_CACHE:
+        return label, BGM_AUDIO_CACHE[cache_key]
+
+    for q in queries:
+        mp3 = await _fetch_real_song_clip(q)
+        if mp3:
+            BGM_AUDIO_CACHE[cache_key] = mp3
+            return label, mp3
+    return label, None
+
 async def _make_sfx_mp3(text: str) -> bytes:
     def _gen():
         b = io.BytesIO()
@@ -280,33 +313,118 @@ async def karaoke_cb(client, query: CallbackQuery):
         _karaoke_rows(),
     )
 
-# ── 3. CUSTOM VC ENTRY BGM (/entry) ───────────────────────────
-@bot.on_message(filters.command(["entry", "setentry"], prefixes=["/", "!", "."]))
+# ── 3. REAL BGMI ENTRY BGM & AUTO GROUP JOIN BANNER + MUSIC ───
+def _entry_bgm_rows(uid: int) -> list:
+    return [
+        [
+            _cbtn("🎮 𝐁𝐆𝐌𝐈", style="primary", callback_data=f"mgb_ebgm_set_{uid}_bgmi"),
+            _cbtn("🔥 𝐊𝐆𝐅", style="danger", callback_data=f"mgb_ebgm_set_{uid}_kgf"),
+        ],
+        [
+            _cbtn("⚡ 𝐕𝐈𝐊𝐑𝐀𝐌", style="success", callback_data=f"mgb_ebgm_set_{uid}_vikram"),
+            _cbtn("🦁 𝐀𝐍𝐈𝐌𝐀𝐋", style="primary", callback_data=f"mgb_ebgm_set_{uid}_animal"),
+        ],
+        [
+            _cbtn("🔊 𝐏𝐋𝐀𝐘 𝐌𝐘 𝐁𝐆𝐌", style="success", callback_data=f"mgb_ebgm_play_{uid}"),
+        ],
+    ]
+
+@bot.on_message(filters.command(["entry", "setentry", "bgm"], prefixes=["/", "!", "."]))
 async def entry_bgm_cmd(client, message: Message):
     user = message.from_user
     if not user:
         return
-    theme = message.text.split(None, 1)[1] if len(message.command) > 1 else f"Swagat karo, VVIP {user.first_name} ki entry ho chuki hai!"
-    ENTRY_BGMS[user.id] = theme
-    rows = [[_cbtn("🔊 𝐓𝐄𝐒𝐓 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌", style="success", callback_data=f"mgb_entry_play_{user.id}")]]
+    if len(message.command) > 1:
+        custom = message.text.split(None, 1)[1].strip()
+        USER_BGM_PREF[user.id] = custom
+        active = custom
+    else:
+        pref = USER_BGM_PREF.get(user.id, "bgmi")
+        active = BGM_PRESETS[pref][0] if pref in BGM_PRESETS else pref
+
     await send_colored_msg(
         client, message.chat.id,
-        f"<blockquote><b>🔥 𝐕𝐈𝐏 𝐕𝐂 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌 𝐒𝐄𝐓</b></blockquote>\n\n"
-        f"👤 <b>VIP:</b> <b>{html.escape(user.first_name)}</b>\n🎵 <b>Line:</b> <code>{html.escape(theme)}</code>\n\n{FOOTER}",
-        rows, reply_to=message.id,
+        f"<blockquote><b>🔥 𝐌𝐆𝐁 𝐑𝐄𝐀𝐋 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌</b></blockquote>\n\n"
+        f"👤 <b>VIP:</b> <b>{html.escape(user.first_name)}</b>\n"
+        f"🎵 <b>Active BGM:</b> <code>{html.escape(active)}</code>\n"
+        f"💡 <b>Custom Song:</b> <code>/entry Song Name</code>\n\n{FOOTER}",
+        _entry_bgm_rows(user.id), reply_to=message.id,
     )
 
-@bot.on_callback_query(filters.regex(r"^mgb_entry_play_(\d+)$"))
-async def entry_play_cb(client, query: CallbackQuery):
-    uid = int(query.matches[0].group(1))
-    line = ENTRY_BGMS.get(uid, f"VIP {query.from_user.first_name} has entered!")
-    await query.answer("🔊 Sending Entry Audio...", show_alert=False)
-    mp3 = await _make_sfx_mp3(line)
-    await send_colored_audio(
-        client, query.message.chat.id, mp3, "VIP Entry BGM", f"@{OWNER_UNAME}", 5,
-        f"<blockquote><b>🔥 𝐕𝐈𝐏 𝐄𝐍𝐓𝐑𝐘 𝐀𝐋𝐄𝐑𝐓</b></blockquote>\n\n{FOOTER}",
-        [[_cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="primary", url=f"https://t.me/{OWNER_UNAME}")]],
+@bot.on_callback_query(filters.regex(r"^mgb_ebgm_(set|play)_(\d+)(?:_([a-z]+))?$"))
+async def entry_bgm_cb(client, query: CallbackQuery):
+    act = query.matches[0].group(1)
+    uid = int(query.matches[0].group(2))
+    preset = query.matches[0].group(3)
+
+    if act == "set":
+        if query.from_user.id != uid:
+            return await query.answer("❌ Apna BGM set karne ke liye /entry bhejein!", show_alert=True)
+        USER_BGM_PREF[uid] = preset
+        label = BGM_PRESETS[preset][0]
+        await query.answer(f"✅ {label} Set!", show_alert=False)
+        return await edit_colored_msg(
+            client, query.message.chat.id, query.message.id,
+            f"<blockquote><b>🔥 𝐌𝐆𝐁 𝐑𝐄𝐀𝐋 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌</b></blockquote>\n\n"
+            f"👤 <b>VIP:</b> <b>{html.escape(query.from_user.first_name)}</b>\n"
+            f"🎵 <b>Active BGM:</b> <code>{label}</code>\n\n{FOOTER}",
+            _entry_bgm_rows(uid),
         )
+
+    pref = USER_BGM_PREF.get(uid, "bgmi")
+    await query.answer("🎵 Real BGM Music load ho raha hai...", show_alert=False)
+    label, mp3 = await _get_real_bgm_mp3(pref)
+    if not mp3:
+        return await query.answer("❌ BGM fetch nahi ho paya, dobara try karein!", show_alert=True)
+
+    await send_colored_audio(
+        client, query.message.chat.id, mp3, label, f"@{OWNER_UNAME}", 20,
+        f"<blockquote><b>🔥 𝐕𝐈𝐏 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌 𝐌𝐔𝐒𝐈𝐂</b></blockquote>\n\n"
+        f"👤 <b>Member:</b> <b>{html.escape(query.from_user.first_name)}</b>\n"
+        f"🎵 <b>Track:</b> <code>{html.escape(label)}</code>\n\n{FOOTER}",
+        [[_cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="primary", url=f"https://t.me/{OWNER_UNAME}")]],
+    )
+
+@bot.on_message(filters.group & filters.new_chat_members, group=8)
+async def group_join_bgm_handler(client, message: Message):
+    if message.chat.id in WELCOME_BGM_OFF:
+        return
+    for member in message.new_chat_members:
+        if member.is_bot:
+            continue
+        pref = USER_BGM_PREF.get(member.id, "bgmi")
+        label, mp3 = await _get_real_bgm_mp3(pref)
+
+        try:
+            from ArtistMusic.plugins.mgb_viral_cards import _get_user_dp, _get_template_bg, _make_single_card, send_rich_card
+            dp = await _get_user_dp(client, member.id)
+            tpl = await _get_template_bg()
+            card = _make_single_card(
+                dp,
+                "WELCOME TO GROUP",
+                member.first_name,
+                f"Group: {message.chat.title or 'MGB VIP'}",
+                f"Entry BGM: {label}",
+                template_bg=tpl,
+            )
+            await send_rich_card(
+                client, message.chat.id, card,
+                f"<blockquote><b>👑 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 {html.escape(message.chat.title or 'GROUP')}</b></blockquote>\n\n"
+                f"✨ <b>New Member:</b> <b>{html.escape(member.first_name)}</b>\n\n{FOOTER}",
+            )
+        except Exception:
+            pass
+
+        if mp3:
+            await send_colored_audio(
+                client, message.chat.id, mp3, label, f"@{OWNER_UNAME}", 20,
+                f"<blockquote><b>🎮 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌</b></blockquote>\n\n"
+                f"🔥 <b>{html.escape(member.first_name)}</b> ki Royal Entry ho chuki hai!\n\n{FOOTER}",
+                [[
+                    _cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="primary", url=f"https://t.me/{OWNER_UNAME}"),
+                    _cbtn("🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒", style="success", url=f"https://t.me/{CHANNEL_UNAME}"),
+                ]],
+            )
 # ── 4. LIVE MEME SOUNDBOARD (/sfx) ────────────────────────────
 def _sfx_rows() -> list:
     return [
@@ -529,12 +647,7 @@ async def quote_sticker_cmd(client, message: Message):
     await message.reply_sticker(sticker=st)
 
 # ── 8. AUTO REELS & SHORTS DOWNLOADER (/dl) ───────────────────
-try:
-    from ArtistMusic import yt as artist_yt
-except Exception:
-    artist_yt = None
-
-def _find_yt_cookies() -> str | None:
+def _find_yt_cookies():
     for path in (
         "cookies.txt",
         "cookies/cookies.txt",
@@ -545,7 +658,7 @@ def _find_yt_cookies() -> str | None:
             return path
     return None
 
-def _extract_yt_id(url: str) -> str | None:
+def _extract_yt_id(url: str):
     m = re.search(r"(?:youtu\.be/|youtube\.com/(?:shorts/|watch\?v=|embed/))([A-Za-z0-9_-]{11})", url)
     return m.group(1) if m else None
 
@@ -565,7 +678,6 @@ def _sync_ytdlp_download(url: str, out_dir: str, is_yt: bool = False) -> str:
             info = ydl.extract_info(url, download=True)
             return ydl.prepare_filename(info)
 
-    # YouTube: try cookies first (if present), else client bypass fallbacks
     client_sets = [["default"]] if cookie_file else [["ios", "android_vr"], ["tv_embedded", "mweb"], ["android"]]
     last_err = None
     for clients in client_sets:
@@ -603,7 +715,6 @@ async def reels_dl_cmd(client, message: Message):
     from_api = False
 
     try:
-        # 1. YouTube Shorts/Video -> pehle aapke bot ki apni API (ArtistMusic.yt) try karega
         if is_yt and artist_yt and hasattr(artist_yt, "download"):
             vid = _extract_yt_id(url)
             for arg in (vid, url):
@@ -617,7 +728,6 @@ async def reels_dl_cmd(client, message: Message):
                 except Exception:
                     continue
 
-        # 2. Fallback -> yt-dlp (Instagram Reels / YouTube Cookies & Client Bypass)
         if not fp:
             fp = await asyncio.to_thread(_sync_ytdlp_download, url, td, is_yt)
 
@@ -630,7 +740,7 @@ async def reels_dl_cmd(client, message: Message):
     except Exception as e:
         err = str(e)
         if "Sign in to confirm" in err:
-            err = "YouTube ne Render IP block kiya hai. Repo ke root mein cookies.txt add karein ya API check karein."
+            err = "YouTube ne Render IP block kiya hai. Repo ke root mein cookies.txt add karein."
         await m.edit_text(f"❌ <b>Download Failed:</b> <code>{html.escape(err[:160])}</code>", parse_mode=enums.ParseMode.HTML)
     finally:
         for f in os.listdir(td):
@@ -766,4 +876,3 @@ async def autoclean_watcher(client, message: Message):
             except Exception:
                 pass
         asyncio.create_task(_del(message))
-    
