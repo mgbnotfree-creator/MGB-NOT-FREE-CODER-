@@ -53,8 +53,13 @@ VOTE_SKIP_DATA = defaultdict(set)
 WHISPERS = {}
 QUIZ_SCORES = defaultdict(int)
 QUIZ_ACTIVE = {}
-LIVE_CRIC_TASKS = {}
 AUTOCLEAN_CHATS = set()
+
+SCORE_BOARD_STATS = defaultdict(lambda: {"four": 0, "six": 0, "wicket": 0, "last_event": "LIVE READY"})
+LIVE_CRIC_LAST_STATE = {}
+AUTO_SPEAKER_TASKS = {}
+AUTO_SPEAKER_STATE = {}
+AUTO_46_CHAT_COOLDOWN = {}
 
 BGM_PRESETS = {
     "bgmi": ("🎮 BGMI Royal Entry BGM", ["PUBG Mobile Theme", "Alan Walker On My Way", "KGF Theme Ravi Basrur"]),
@@ -157,6 +162,20 @@ async def send_colored_audio(client, chat_id: int, mp3_bytes: bytes, title: str,
     bio.name = "mgb_clip.mp3"
     m = await client.send_audio(chat_id, bio, title=title, performer=performer, duration=duration, caption=caption, parse_mode=enums.ParseMode.HTML)
     return m.id
+
+async def _pop_reaction(client, chat_id: int, message_id: int, emoji: str):
+    if not message_id:
+        return
+    await _bot_api(
+        client,
+        "setMessageReaction",
+        {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "reaction": [{"type": "emoji", "emoji": emoji}],
+            "is_big": True,
+        },
+    )
 
 # ── REAL STUDIO AUDIO CLIP ENGINE (iTunes + FFmpeg) ───────────
 def _convert_to_clean_mp3(raw_bytes: bytes, max_sec: int = 20) -> bytes:
@@ -758,69 +777,334 @@ async def reels_dl_cmd(client, message: Message):
             except Exception:
                 pass
 
-# ── 9. LIVE AUTO-REFRESH CRICKET SCORECARD (/score) ───────────
-async def _fetch_live_cricket(live: bool = True) -> str:
-    now = datetime.now(IST).strftime("%I:%M:%S %p")
-    badge = f"🔴 <b>LIVE AUTO-REFRESH (15s)</b> • <code>{now}</code>" if live else f"⚪ <b>PAUSED</b> • <code>{now}</code>"
+# ── 9. /score SCOREBOARD MENU + 4 / 6 / WICKET VOICE & POP-UP ─
+async def _fetch_current_score_line() -> str:
     try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6)) as s:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as s:
             async with s.get("https://static.cricinfo.com/rss/livescores.xml") as r:
                 if r.status == 200:
-                    xml_txt = await r.text()
-                    titles = re.findall(r"<title>(.*?)</title>", xml_txt)[1:4]
+                    txt = await r.text()
+                    titles = re.findall(r"<title>(.*?)</title>", txt)[1:3]
                     if titles:
-                        body = "\n".join(f"🏏 <code>{html.escape(t)}</code>" for t in titles)
-                        return f"<blockquote><b>🏏 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐂𝐑𝐈𝐂𝐊𝐄𝐓 𝐒𝐂𝐎𝐑𝐄</b></blockquote>\n{badge}\n\n{body}\n\n{FOOTER}"
+                        return " | ".join(t.strip() for t in titles if t.strip())[:140]
     except Exception:
         pass
-    overs = f"{random.randint(14, 19)}.{random.randint(1, 5)}"
-    runs, wkts = random.randint(148, 215), random.randint(2, 6)
+    return "Live Scoreboard Active! Six! Six! Six!"
+
+def _score_menu_rows() -> list:
+    return [
+        [
+            _cbtn("⚡ 𝟒 𝐑𝐔𝐍𝐒", style="primary", callback_data="mgb_sc_hit_4"),
+            _cbtn("🌟 𝟔 𝐒𝐈𝐗", style="success", callback_data="mgb_sc_hit_6"),
+            _cbtn("🚨 𝐖𝐈𝐂𝐊𝐄𝐓", style="danger", callback_data="mgb_sc_hit_w"),
+        ],
+        [
+            _cbtn("🔄 𝐑𝐄𝐅𝐑𝐄𝐒𝐇", style="success", callback_data="mgb_sc_open"),
+            _cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="primary", url=f"https://t.me/{OWNER_UNAME}"),
+        ],
+    ]
+
+async def _build_full_scoreboard_text(chat_id: int) -> str:
+    st = SCORE_BOARD_STATS[chat_id]
+    live_line = await _fetch_current_score_line()
+    now = datetime.now(IST).strftime("%I:%M:%S %p")
     return (
-        f"<blockquote><b>🏏 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐂𝐑𝐈𝐂𝐊𝐄𝐓 𝐒𝐂𝐎𝐑𝐄</b></blockquote>\n{badge}\n\n"
-        f"🏏 <b>IND vs AUS (T20 Live)</b>\n📊 <b>Score:</b> <code>IND {runs}/{wkts} ({overs} Ov)</code>\n🔥 <b>CRR:</b> <code>{round(runs/float(overs), 2)}</code>\n\n{FOOTER}"
+        f"🌟✨🌟 <b>𝐒𝐂𝐎𝐑𝐄𝐁𝐎𝐀𝐑𝐃 𝐌𝐄𝐍𝐔 (/score)</b> 🌟✨🌟\n"
+        f"<blockquote><b>🏏 𝐋𝐈𝐕𝐄 𝐌𝐀𝐓𝐂𝐇 𝐒𝐂𝐎𝐑𝐄𝐁𝐎𝐀𝐑𝐃</b>\n"
+        f"📊 <code>{html.escape(live_line)}</code>\n"
+        f"🌟 <b>Sixes:</b> <code>{st['six']}</code>  |  "
+        f"⚡ <b>Fours:</b> <code>{st['four']}</code>  |  "
+        f"🚨 <b>Wickets:</b> <code>{st['wicket']}</code></blockquote>\n"
+        f"🔥 <b>Last Action:</b> <code>{html.escape(st['last_event'])}</code>\n"
+        f"🕒 <b>Updated:</b> <code>{now}</code>  •  <b>Stream:</b> <code>Any State</code>\n\n{FOOTER}"
     )
 
-def _cric_rows(live: bool = True) -> list:
-    if live:
-        return [[
-            _cbtn("🔄 𝐑𝐄𝐅𝐑𝐄𝐒𝐇", style="success", callback_data="mgb_cric_ref"),
-            _cbtn("⏹ 𝐒𝐓𝐎𝐏 𝐋𝐈𝐕𝐄", style="danger", callback_data="mgb_cric_stop"),
-        ]]
-    return [[_cbtn("🔄 𝐒𝐓𝐀𝐑𝐓 𝐋𝐈𝐕𝐄", style="success", callback_data="mgb_cric_ref")]]
+async def _make_score_popup_banner(chat_id: int, event_code: str) -> io.BytesIO:
+    st = SCORE_BOARD_STATS[chat_id]
+    labels = {
+        "6": ("SIX! SIX! SIX!", f"Total 6s: {st['six']} | 4s: {st['four']}", f"Wickets: {st['wicket']} | MAXIMUM HIT"),
+        "4": ("FOUR! FOUR! FOUR!", f"Total 4s: {st['four']} | 6s: {st['six']}", f"Wickets: {st['wicket']} | BOUNDARY HIT"),
+        "w": ("WICKET! OUT!", f"Total Wickets: {st['wicket']}", f"6s: {st['six']} | 4s: {st['four']}"),
+    }
+    badge, l1, l2 = labels.get(event_code, ("LIVE SCOREBOARD", f"6s: {st['six']} | 4s: {st['four']}", f"Wickets: {st['wicket']}"))
+    try:
+        from ArtistMusic.plugins.mgb_viral_cards import _get_user_dp, _get_template_bg, _make_single_card
+        dp = await _get_user_dp(bot, bot.me.id)
+        tpl = await _get_template_bg()
+        return _make_single_card(dp, badge, "MGB LIVE SCORE", l1, l2, template_bg=tpl)
+    except Exception:
+        img = Image.new("RGB", (960, 420), (16, 12, 34))
+        d = ImageDraw.Draw(img)
+        f = ImageFont.load_default()
+        d.text((60, 90), badge, fill=(255, 215, 60), font=f)
+        d.text((60, 150), l1, fill=(255, 255, 255), font=f)
+        d.text((60, 210), l2, fill=(120, 235, 255), font=f)
+        b = io.BytesIO()
+        b.name = "score_popup.jpg"
+        img.save(b, "JPEG", quality=95)
+        b.seek(0)
+        return b
+
+async def _trigger_score_event_voice_and_popup(client, chat_id: int, event_code: str, reply_to: int = None):
+    st = SCORE_BOARD_STATS[chat_id]
+    if event_code == "6":
+        st["six"] += 1
+        st["last_event"] = "SIX HUA! (6 RUNS)"
+        spoken = "Six hua! Six! Six! Bahut badhiya six laga!"
+        emoji = "🔥"
+    elif event_code == "4":
+        st["four"] += 1
+        st["last_event"] = "FOUR HUA! (4 RUNS)"
+        spoken = "Four hua! Four! Four! Zabardast four laga!"
+        emoji = "🎉"
+    else:
+        st["wicket"] += 1
+        st["last_event"] = "WICKET GAYA! (OUT)"
+        spoken = "Wicket gaya! Ballebaaz out ho gaya!"
+        emoji = "🚨"
+
+    banner_bio = await _make_score_popup_banner(chat_id, event_code)
+    try:
+        from ArtistMusic.plugins.mgb_viral_cards import send_rich_card
+        pop_id = await send_rich_card(
+            client,
+            chat_id,
+            banner_bio,
+            await _build_full_scoreboard_text(chat_id),
+            json_rows=_score_menu_rows(),
+        )
+    except Exception:
+        banner_bio.seek(0)
+        sent = await client.send_photo(chat_id, banner_bio, caption=await _build_full_scoreboard_text(chat_id), parse_mode=enums.ParseMode.HTML)
+        pop_id = sent.id
+
+    if pop_id:
+        await _pop_reaction(client, chat_id, pop_id, emoji)
+
+    mp3 = await _make_sfx_mp3(spoken)
+    aud_id = await send_colored_audio(
+        client,
+        chat_id,
+        mp3,
+        st["last_event"],
+        f"@{OWNER_UNAME}",
+        4,
+        f"🔊 <b>{html.escape(st['last_event'])}</b>\n\n{FOOTER}",
+        _score_menu_rows(),
+        reply_to=pop_id or reply_to,
+    )
+    if aud_id:
+        await _pop_reaction(client, chat_id, aud_id, emoji)
 
 @bot.on_message(filters.command(["score", "cricket"], prefixes=["/", "!", "."]))
-async def cricket_cmd(client, message: Message):
+async def open_scoreboard_menu_cmd(client, message: Message):
     chat_id = message.chat.id
-    if chat_id in LIVE_CRIC_TASKS:
-        LIVE_CRIC_TASKS[chat_id].cancel()
+    txt = await _build_full_scoreboard_text(chat_id)
+    mid = await send_colored_msg(client, chat_id, txt, _score_menu_rows(), reply_to=message.id)
+    if mid:
+        await _pop_reaction(client, chat_id, mid, "🔥")
 
-    text = await _fetch_live_cricket(live=True)
-    msg_id = await send_colored_msg(client, chat_id, text, _cric_rows(True), reply_to=message.id)
+    raw_txt = await _fetch_current_score_line()
+    m = re.search(r"(\d+)/(\d+)", raw_txt)
+    if m:
+        runs, wkts = int(m.group(1)), int(m.group(2))
+        prev = LIVE_CRIC_LAST_STATE.get(chat_id)
+        if prev:
+            if wkts > prev["wkts"]:
+                await _trigger_score_event_voice_and_popup(client, chat_id, "w", reply_to=mid)
+            elif runs - prev["runs"] == 6:
+                await _trigger_score_event_voice_and_popup(client, chat_id, "6", reply_to=mid)
+            elif runs - prev["runs"] == 4:
+                await _trigger_score_event_voice_and_popup(client, chat_id, "4", reply_to=mid)
+        LIVE_CRIC_LAST_STATE[chat_id] = {"runs": runs, "wkts": wkts}
 
-    async def _auto_cric():
-        try:
-            for _ in range(20):
-                await asyncio.sleep(15)
-                await edit_colored_msg(client, chat_id, msg_id, await _fetch_live_cricket(live=True), _cric_rows(True))
-            await edit_colored_msg(client, chat_id, msg_id, await _fetch_live_cricket(live=False), _cric_rows(False))
-        except asyncio.CancelledError:
-            pass
+@bot.on_callback_query(filters.regex(r"^mgb_sc_(open|hit_(4|6|w))$"))
+async def scoreboard_menu_cb(client, query: CallbackQuery):
+    data = query.matches[0].group(0)
+    chat_id = query.message.chat.id
 
-    LIVE_CRIC_TASKS[chat_id] = asyncio.create_task(_auto_cric())
+    if data == "mgb_sc_open":
+        await query.answer("🔄 Scoreboard Refreshed!", show_alert=False)
+        return await edit_colored_msg(client, chat_id, query.message.id, await _build_full_scoreboard_text(chat_id), _score_menu_rows())
 
-@bot.on_callback_query(filters.regex(r"^mgb_cric_(ref|stop)$"))
-async def cricket_cb(client, query: CallbackQuery):
+    evt = data.split("_")[-1]
+    await query.answer("🔊 Voice + Banner Pop-Up!", show_alert=False)
+    await _trigger_score_event_voice_and_popup(client, chat_id, evt, reply_to=query.message.id)
+    await edit_colored_msg(client, chat_id, query.message.id, await _build_full_scoreboard_text(chat_id), _score_menu_rows())
+
+# ── 10. AUTO SPEAKER + POST-VOICE PLAYER POP-UP (/autospeaker)
+def _extract_player_and_score(raw_text: str):
+    clean = re.sub(r"<[^>]+>", " ", raw_text or "")
+    clean = html.unescape(re.sub(r"\s+", " ", clean)).strip()
+    m_score = re.search(r"\b(\d{1,3})/(\d{1,2})\b", clean)
+    if not m_score:
+        return None
+    runs = int(m_score.group(1))
+    wkts = int(m_score.group(2))
+    player_name = "Live Batter"
+    m_pl = re.search(r"(?:to|by|bowled|lbw|caught|stumped|hit by)\s+([A-Z][a-zA-Z0-9\s\.\-]{1,26})", clean)
+    if m_pl:
+        cand = m_pl.group(1).strip(" .,-")
+        if cand and len(cand.split()) <= 3:
+            player_name = cand
+    else:
+        m_team = re.search(r"\b([A-Z]{2,5})\b", clean[:m_score.start()])
+        if m_team:
+            player_name = f"{m_team.group(1)} Batter"
+    return {"runs": runs, "wkts": wkts, "player": player_name, "line": clean[:120]}
+
+async def _auto_speaker_fire(client, chat_id: int, event_kind: str, player_name: str, match_line: str):
+    if event_kind == "6":
+        spoken = "Six! Six! Six!"
+        action_word = "SIX"
+        popup_headline = f"🌟 <b>{html.escape(player_name)} ne SIX maara hai!</b> 🌟"
+        badge_txt = "6️⃣ SIX HIT!"
+        react_emoji = "🔥"
+    elif event_kind == "4":
+        spoken = "Four! Four! Four!"
+        action_word = "FOUR"
+        popup_headline = f"⚡ <b>{html.escape(player_name)} ne FOUR maara hai!</b> ⚡"
+        badge_txt = "4️⃣ FOUR HIT!"
+        react_emoji = "🎉"
+    else:
+        spoken = "Wicket! Out!"
+        action_word = "WICKET"
+        popup_headline = f"🚨 <b>{html.escape(player_name)} OUT ho gaya!</b> 🚨"
+        badge_txt = "🚨 WICKET!"
+        react_emoji = "😱"
+
+    mp3 = await _make_sfx_mp3(spoken)
+    aud_id = await send_colored_audio(
+        client,
+        chat_id,
+        mp3,
+        f"Auto Speaker • {action_word}",
+        f"@{OWNER_UNAME}",
+        3,
+        f"🎙 <b>𝐀𝐔𝐓𝐎 𝐒𝐏𝐄𝐀𝐊𝐄𝐑:</b> <code>{spoken}</code>\n\n{FOOTER}",
+        _score_menu_rows(),
+    )
+    if aud_id:
+        await _pop_reaction(client, chat_id, aud_id, react_emoji)
+
+    await asyncio.sleep(2.5)
+
+    now = datetime.now(IST).strftime("%I:%M:%S %p")
+    popup_text = (
+        f"🌟✨🌟 <b>{badge_txt} 𝐏𝐎𝐏-𝐔𝐏</b> 🌟✨🌟\n"
+        f"<blockquote>{popup_headline}\n"
+        f"🏏 <b>Player:</b> <code>{html.escape(player_name)}</code>\n"
+        f"📊 <b>Match:</b> <code>{html.escape(match_line)}</code></blockquote>\n"
+        f"🕒 <b>Time:</b> <code>{now}</code>\n\n{FOOTER}"
+    )
+    pop_id = await send_colored_msg(client, chat_id, popup_text, _score_menu_rows(), reply_to=aud_id)
+    if pop_id:
+        await _pop_reaction(client, chat_id, pop_id, react_emoji)
+
+async def _auto_speaker_loop(client, chat_id: int):
+    try:
+        while True:
+            await asyncio.sleep(8)
+            try:
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6)) as s:
+                    async with s.get("https://static.cricinfo.com/rss/livescores.xml") as r:
+                        if r.status != 200:
+                            continue
+                        xml_txt = await r.text()
+                items = re.findall(r"<item>.*?</item>", xml_txt, flags=re.S) or re.findall(r"<title>(.*?)</title>", xml_txt)[1:4]
+                for raw_item in items:
+                    parsed = _extract_player_and_score(raw_item)
+                    if not parsed:
+                        continue
+                    runs, wkts, player, line = parsed["runs"], parsed["wkts"], parsed["player"], parsed["line"]
+                    st = AUTO_SPEAKER_STATE.get(chat_id)
+                    if not st:
+                        AUTO_SPEAKER_STATE[chat_id] = {"runs": runs, "wkts": wkts, "last_sig": ""}
+                        continue
+                    diff_r = runs - st["runs"]
+                    diff_w = wkts - st["wkts"]
+                    sig = f"{runs}/{wkts}:{diff_r}:{diff_w}"
+                    if sig != st.get("last_sig"):
+                        st["last_sig"] = sig
+                        st["runs"] = runs
+                        st["wkts"] = wkts
+                        if diff_w > 0:
+                            await _auto_speaker_fire(client, chat_id, "w", player, line)
+                            break
+                        elif diff_r == 6:
+                            SCORE_BOARD_STATS[chat_id]["six"] += 1
+                            SCORE_BOARD_STATS[chat_id]["last_event"] = f"{player} SIX HUA!"
+                            await _auto_speaker_fire(client, chat_id, "6", player, line)
+                            break
+                        elif diff_r == 4:
+                            SCORE_BOARD_STATS[chat_id]["four"] += 1
+                            SCORE_BOARD_STATS[chat_id]["last_event"] = f"{player} FOUR HUA!"
+                            await _auto_speaker_fire(client, chat_id, "4", player, line)
+                            break
+            except Exception:
+                pass
+    except asyncio.CancelledError:
+        pass
+
+@bot.on_message(filters.command(["autospeaker", "speaker"], prefixes=["/", "!", "."]))
+async def auto_speaker_cmd(client, message: Message):
+    chat_id = message.chat.id
+    arg = message.command[1].lower() if len(message.command) > 1 else "toggle"
+    if arg in ("off", "stop", "disable") or (arg == "toggle" and chat_id in AUTO_SPEAKER_TASKS):
+        if chat_id in AUTO_SPEAKER_TASKS:
+            AUTO_SPEAKER_TASKS.pop(chat_id).cancel()
+        return await send_colored_msg(
+            client, chat_id, f"⚪ <b>𝐀𝐔𝐓𝐎 𝐒𝐏𝐄𝐀𝐊𝐄𝐑 𝐎𝐅𝐅</b>\n\n{FOOTER}",
+            [[_cbtn("▶️ 𝐀𝐔𝐓𝐎 𝐒𝐏𝐄𝐀𝐊𝐄𝐑 𝐎𝐍", style="success", callback_data="mgb_aspk_on")]],
+            reply_to=message.id,
+        )
+    if chat_id in AUTO_SPEAKER_TASKS:
+        AUTO_SPEAKER_TASKS.pop(chat_id).cancel()
+    AUTO_SPEAKER_STATE.pop(chat_id, None)
+    AUTO_SPEAKER_TASKS[chat_id] = asyncio.create_task(_auto_speaker_loop(client, chat_id))
+    await send_colored_msg(
+        client, chat_id,
+        f"🎙✨🎙 <b>𝐀𝐔𝐓𝐎 𝐒𝐏𝐄𝐀𝐊𝐄𝐑 𝐋𝐈𝐕𝐄 𝐎𝐍</b> 🎙✨🎙\n"
+        f"<blockquote><b>🏏 𝐋𝐈𝐕𝐄 𝐌𝐀𝐓𝐂𝐇 𝐀𝐔𝐓𝐎-𝐀𝐍𝐍𝐎𝐔𝐍𝐂𝐄𝐑</b>\n"
+        f"🌟 <b>6 Runs</b> → <i>'Six! Six! Six!'</i> + Player Pop-Up\n"
+        f"⚡ <b>4 Runs</b> → <i>'Four! Four! Four!'</i> + Player Pop-Up</blockquote>\n\n{FOOTER}",
+        [[
+            _cbtn("🌟 𝐒𝐈𝐗 𝐃𝐄𝐌𝐎", style="success", callback_data="mgb_aspk_demo6"),
+            _cbtn("⚡ 𝐅𝐎𝐔𝐑 𝐃𝐄𝐌𝐎", style="primary", callback_data="mgb_aspk_demo4"),
+            _cbtn("⏹ 𝐒𝐓𝐎𝐏", style="danger", callback_data="mgb_aspk_off"),
+        ]],
+        reply_to=message.id,
+    )
+
+@bot.on_callback_query(filters.regex(r"^mgb_aspk_(on|off|demo6|demo4)$"))
+async def auto_speaker_cb(client, query: CallbackQuery):
     act = query.matches[0].group(1)
     chat_id = query.message.chat.id
-    if act == "stop":
-        if chat_id in LIVE_CRIC_TASKS:
-            LIVE_CRIC_TASKS.pop(chat_id).cancel()
-        await query.answer("⏹ Live Auto-Refresh Stopped!", show_alert=False)
-        return await edit_colored_msg(client, chat_id, query.message.id, await _fetch_live_cricket(live=False), _cric_rows(False))
-    await query.answer("🔄 Live Score Updated!", show_alert=False)
-    await edit_colored_msg(client, chat_id, query.message.id, await _fetch_live_cricket(live=True), _cric_rows(True))
+    if act == "off":
+        if chat_id in AUTO_SPEAKER_TASKS:
+            AUTO_SPEAKER_TASKS.pop(chat_id).cancel()
+        await query.answer("⏹ Auto Speaker Stopped!", show_alert=False)
+        return await edit_colored_msg(
+            client, chat_id, query.message.id, f"⚪ <b>𝐀𝐔𝐓𝐎 𝐒𝐏𝐄𝐀𝐊𝐄𝐑 𝐎𝐅𝐅</b>\n\n{FOOTER}",
+            [[_cbtn("▶️ 𝐀𝐔𝐓𝐎 𝐒𝐏𝐄𝐀𝐊𝐄𝐑 𝐎𝐍", style="success", callback_data="mgb_aspk_on")]],
+        )
+    if act == "on":
+        if chat_id not in AUTO_SPEAKER_TASKS:
+            AUTO_SPEAKER_STATE.pop(chat_id, None)
+            AUTO_SPEAKER_TASKS[chat_id] = asyncio.create_task(_auto_speaker_loop(client, chat_id))
+        await query.answer("🎙 Auto Speaker ON!", show_alert=False)
+        return await edit_colored_msg(
+            client, chat_id, query.message.id, f"🎙✨🎙 <b>𝐀𝐔𝐓𝐎 𝐒𝐏𝐄𝐀𝐊𝐄𝐑 𝐋𝐈𝐕𝐄 𝐎𝐍</b> 🎙✨🎙\n\n{FOOTER}",
+            [[_cbtn("⏹ 𝐒𝐓𝐎𝐏", style="danger", callback_data="mgb_aspk_off")]],
+        )
+    if act == "demo6":
+        await query.answer("🎙 Speaking Six...", show_alert=False)
+        await _auto_speaker_fire(client, chat_id, "6", "Virat Kohli", "IND vs AUS • Live Match")
+    elif act == "demo4":
+        await query.answer("🎙 Speaking Four...", show_alert=False)
+        await _auto_speaker_fire(client, chat_id, "4", "Rohit Sharma", "IND vs AUS • Live Match")
 
-# ── 10. SMART AUTO-CLEAN MODE (/autoclean) ────────────────────
+# ── 11. SMART AUTO-CLEAN MODE (/autoclean) ────────────────────
 def _ac_rows() -> list:
     return [[
         _cbtn("✅ 𝐄𝐍𝐀𝐁𝐋𝐄", style="success", callback_data="mgb_ac_on"),
