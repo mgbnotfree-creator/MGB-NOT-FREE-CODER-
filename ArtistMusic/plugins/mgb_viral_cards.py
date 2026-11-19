@@ -23,14 +23,13 @@ try:
 except ImportError:
     from ArtistMusic import app as bot
 
-# ── BRANDING & STORAGE ────────────────────────────────────────
+# ── BRANDING & AUTO TEMPLATE ──────────────────────────────────
 OWNER_UNAME = "MGB_NOT_FREE_1"
 CHANNEL_UNAME = "MGB_CODER"
 FOOTER = f"<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @{OWNER_UNAME}</code>"
 IST = timezone(timedelta(hours=5, minutes=30))
 
-# Blank Royal Gold & Purple AI Banner Template URL (ya repo mein mgb_card_bg.png rakhein)
-CARD_TEMPLATE_URL = ""
+CARD_TEMPLATE_URL = "https://i.ibb.co/MDRnVS7r/photo-AQADc-BRr-G5-SZ-Vd8.jpg"
 _CACHED_TEMPLATE = None
 
 AFK_USERS = {}
@@ -42,6 +41,7 @@ VC_POINTS = defaultdict(lambda: defaultdict(int))
 LIVE_LB_TASKS = {}
 TD_ACTIVE = {}
 RPS_ACTIVE = {}
+RANK_MILESTONES = {50: "PRO LISTENER", 150: "VVIP LEGEND", 300: "ROYAL KING"}
 
 TRUTH_LIST = [
     "Is group mein sabse zyada cute kaun lagta hai? Naam batao!",
@@ -59,7 +59,7 @@ DARE_LIST = [
     "Apni gallery ki 5th photo bina soche group mein bhejo!",
 ]
 
-# ── 🔘 COLORED HTML BUTTON ENGINE ─────────────────────────────
+# ── 🔘 HTML COLORED BUTTON ENGINE (sendRichMessage + Fallback)
 def _cbtn(text: str, style: str = "primary", callback_data: str = None, url: str = None) -> dict:
     btn = {"text": text, "style": style}
     if url:
@@ -67,6 +67,25 @@ def _cbtn(text: str, style: str = "primary", callback_data: str = None, url: str
     elif callback_data:
         btn["callback_data"] = callback_data
     return btn
+
+def _rows_to_rich_html(rows: list) -> str:
+    if not rows:
+        return ""
+    out = []
+    for row in rows:
+        btns_html = []
+        for b in row:
+            st = b.get("style", "primary")
+            txt = html.escape(str(b.get("text", "Button")))
+            if b.get("url"):
+                u = html.escape(str(b["url"]), quote=True)
+                btns_html.append(f'<tg-button type="url" style="{st}" url="{u}">{txt}</tg-button>')
+            elif b.get("callback_data"):
+                cd = html.escape(str(b["callback_data"]), quote=True)
+                btns_html.append(f'<tg-button type="callback" style="{st}" data="{cd}">{txt}</tg-button>')
+        if btns_html:
+            out.append(f'<tg-button-row align="center">{"".join(btns_html)}</tg-button-row>')
+    return "".join(out)
 
 def _brand_html_btns() -> str:
     return (
@@ -97,6 +116,16 @@ async def _bot_api_req(client, method: str, data: dict):
     return None
 
 async def send_colored_msg(client, chat_id: int, text: str, rows: list, reply_to: int = None):
+    rich_btns = _rows_to_rich_html(rows)
+    if rich_btns:
+        rich_html = text.replace("\n", "<br>") + "<br><br>" + rich_btns
+        rich_payload = {"chat_id": chat_id, "rich_message": {"html": rich_html}}
+        if reply_to:
+            rich_payload["reply_to_message_id"] = reply_to
+        res = await _bot_api_req(client, "sendRichMessage", rich_payload)
+        if res:
+            return res.get("message_id")
+
     payload = {
         "chat_id": chat_id,
         "text": text,
@@ -112,6 +141,17 @@ async def send_colored_msg(client, chat_id: int, text: str, rows: list, reply_to
     return m.id
 
 async def edit_colored_msg(client, chat_id: int, msg_id: int, text: str, rows: list = None):
+    if rows is not None:
+        rich_btns = _rows_to_rich_html(rows)
+        rich_html = text.replace("\n", "<br>") + (("<br><br>" + rich_btns) if rich_btns else "")
+        res = await _bot_api_req(
+            client,
+            "editRichMessage",
+            {"chat_id": chat_id, "message_id": msg_id, "rich_message": {"html": rich_html}},
+        )
+        if res:
+            return res
+
     payload = {
         "chat_id": chat_id,
         "message_id": msg_id,
@@ -125,26 +165,26 @@ async def edit_colored_msg(client, chat_id: int, msg_id: int, text: str, rows: l
 async def send_rich_card(client, chat_id: int, photo_bio: io.BytesIO, caption: str, json_rows: list = None):
     token = getattr(client, "bot_token", None)
     if token and photo_bio:
-        if not json_rows:
-            try:
-                clean_cap = caption.replace("\n", "<br>")
-                full_html = f'<img src="tg://photo?id=card_img"/><br>{clean_cap}<br><br>{_brand_html_btns()}'
-                payload = {
-                    "html": full_html,
-                    "media": [{"id": "card_img", "media": {"type": "photo", "media": "attach://card_img"}}],
-                }
-                form = aiohttp.FormData()
-                form.add_field("chat_id", str(chat_id))
-                form.add_field("rich_message", json.dumps(payload, ensure_ascii=False))
-                photo_bio.seek(0)
-                form.add_field("card_img", photo_bio.read(), filename="mgb_banner.jpg", content_type="image/jpeg")
-                async with aiohttp.ClientSession() as s:
-                    async with s.post(f"https://api.telegram.org/bot{token}/sendRichMessage", data=form) as r:
-                        res = await r.json()
-                        if res.get("ok"):
-                            return res.get("result", {}).get("message_id")
-            except Exception:
-                pass
+        try:
+            clean_cap = caption.replace("\n", "<br>")
+            btns_html = _rows_to_rich_html(json_rows) if json_rows else _brand_html_btns()
+            full_html = f'<img src="tg://photo?id=card_img"/><br>{clean_cap}<br><br>{btns_html}'
+            payload = {
+                "html": full_html,
+                "media": [{"id": "card_img", "media": {"type": "photo", "media": "attach://card_img"}}],
+            }
+            form = aiohttp.FormData()
+            form.add_field("chat_id", str(chat_id))
+            form.add_field("rich_message", json.dumps(payload, ensure_ascii=False))
+            photo_bio.seek(0)
+            form.add_field("card_img", photo_bio.read(), filename="mgb_banner.jpg", content_type="image/jpeg")
+            async with aiohttp.ClientSession() as s:
+                async with s.post(f"https://api.telegram.org/bot{token}/sendRichMessage", data=form) as r:
+                    res = await r.json()
+                    if res.get("ok"):
+                        return res.get("result", {}).get("message_id")
+        except Exception:
+            pass
 
         try:
             form = aiohttp.FormData()
@@ -166,7 +206,7 @@ async def send_rich_card(client, chat_id: int, photo_bio: io.BytesIO, caption: s
     m = await client.send_photo(chat_id, photo_bio, caption=caption, parse_mode=enums.ParseMode.HTML)
     return m.id
 
-# ── 🎨 ROYAL GOLD & PURPLE BANNER ENGINE (ALL CARDS) ──────────
+# ── 🎨 ROYAL GOLD & PURPLE AI-TEMPLATE BANNER ENGINE ──────────
 FANCY_MAP = str.maketrans({
     "ᴀ": "A", "ʙ": "B", "ᴄ": "C", "ᴅ": "D", "ᴇ": "E", "ꜰ": "F", "ғ": "F",
     "ɢ": "G", "ʜ": "H", "ɪ": "I", "ᴊ": "J", "ᴋ": "K", "ʟ": "L", "ᴍ": "M",
@@ -203,8 +243,9 @@ async def _get_template_bg():
 
     if CARD_TEMPLATE_URL:
         try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=12)) as s:
-                async with s.get(CARD_TEMPLATE_URL) as r:
+            headers = {"User-Agent": "Mozilla/5.0"}
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as s:
+                async with s.get(CARD_TEMPLATE_URL, headers=headers) as r:
                     if r.status == 200:
                         raw = await r.read()
                         _CACHED_TEMPLATE = Image.open(io.BytesIO(raw)).convert("RGBA").resize((1280, 720), Image.LANCZOS)
@@ -278,30 +319,11 @@ def _make_single_card(dp: Image.Image, badge: str, title: str, line1: str, line2
         d.ellipse((104, 152, 440, 488), outline=(255, 220, 110, 230), width=4)
     else:
         bg = Image.new("RGBA", (W, H), (8, 5, 18, 255))
-        orbs = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        od = ImageDraw.Draw(orbs)
-        od.ellipse((-90, -90, 560, 560), fill=(255, 185, 25, 150))
-        od.ellipse((740, 100, 1360, 760), fill=(155, 35, 255, 160))
-        bg = Image.alpha_composite(bg, orbs.filter(ImageFilter.GaussianBlur(75)))
-
-        rim = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        ImageDraw.Draw(rim).rounded_rectangle((42, 42, W - 42, H - 42), radius=42, outline=(255, 195, 40, 255), width=8)
-        bg = Image.alpha_composite(bg, rim.filter(ImageFilter.GaussianBlur(10)))
-
         d = ImageDraw.Draw(bg)
         d.rounded_rectangle((44, 44, W - 44, H - 44), radius=40, fill=(14, 10, 28, 232), outline=(255, 205, 65, 255), width=5)
-        d.rounded_rectangle((535, 86, 1070, 190), radius=34, fill=(26, 16, 46, 235), outline=(255, 195, 45, 255), width=4)
-        d.rounded_rectangle((500, 488, 1105, 592), radius=34, fill=(24, 14, 42, 235), outline=(255, 195, 45, 255), width=4)
-
-        halo = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        ImageDraw.Draw(halo).ellipse((92, 140, 452, 500), fill=(255, 185, 30, 195))
-        bg = Image.alpha_composite(bg, halo.filter(ImageFilter.GaussianBlur(18)))
-
         c_dp = _circle_dp(dp, 334)
         bg.paste(c_dp, (105, 153), c_dp)
-        d = ImageDraw.Draw(bg)
-        d.ellipse((102, 150, 442, 490), outline=(255, 240, 150, 240), width=4)
-        d.ellipse((96, 144, 448, 496), outline=(170, 60, 255, 255), width=5)
+        d.ellipse((100, 148, 444, 492), outline=(255, 210, 70, 255), width=6)
 
     t_badge = _clean_pil_text(badge, 24)
     t_name = _clean_pil_text(title, 22)
@@ -329,18 +351,7 @@ def _make_single_card(dp: Image.Image, badge: str, title: str, line1: str, line2
 
 def _make_dual_card(dp1: Image.Image, dp2: Image.Image, name1: str, name2: str, template_bg=None) -> io.BytesIO:
     W, H = 1280, 720
-    if template_bg is not None:
-        bg = template_bg.copy()
-    else:
-        bg = Image.new("RGBA", (W, H), (12, 6, 24, 255))
-        orbs = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        od = ImageDraw.Draw(orbs)
-        od.ellipse((-70, -70, 520, 520), fill=(255, 55, 145, 155))
-        od.ellipse((740, 120, 1340, 720), fill=(255, 185, 35, 145))
-        bg = Image.alpha_composite(bg, orbs.filter(ImageFilter.GaussianBlur(70)))
-        d = ImageDraw.Draw(bg)
-        d.rounded_rectangle((44, 44, W - 44, H - 44), radius=40, fill=(20, 12, 36, 232), outline=(255, 195, 55, 255), width=5)
-
+    bg = template_bg.copy() if template_bg is not None else Image.new("RGBA", (W, H), (12, 6, 24, 255))
     c1, c2 = _circle_dp(dp1, 240), _circle_dp(dp2, 240)
     bg.paste(c1, (140, 160), c1)
     bg.paste(c2, (900, 160), c2)
@@ -364,7 +375,7 @@ def _make_dual_card(dp1: Image.Image, dp2: Image.Image, name1: str, name2: str, 
     bg.convert("RGB").save(out, "JPEG", quality=96)
     out.seek(0)
     return out
-# ── 1. SMART AFK BANNER (/afk) & MESSAGE TRACKER ──────────────
+# ── 1. SMART AFK BANNER (/afk) & AUTO RANK-UP WATCHER ─────────
 def _fmt_time(sec: int) -> str:
     m, s = divmod(int(sec), 60)
     h, m = divmod(m, 60)
@@ -380,7 +391,7 @@ async def set_afk_cmd(client, message: Message):
 
     dp = await _get_user_dp(client, user.id)
     tpl = await _get_template_bg()
-    card = _make_single_card(dp, "AFK MODE ON", user.first_name, f"Reason: {reason}", "Status: Offline", (145, 75, 255), template_bg=tpl)
+    card = _make_single_card(dp, "AFK MODE ON", user.first_name, f"Reason: {reason}", "Status: Offline", template_bg=tpl)
     cap = (
         f"<blockquote><b>🌙 {html.escape(user.first_name)} अब AFK हैं!</b></blockquote>\n"
         f"💬 <b>Reason:</b> <code>{html.escape(reason)}</code>\n\n{FOOTER}"
@@ -393,23 +404,50 @@ async def group_watcher(client, message: Message):
     if not user:
         return
 
-    MSG_COUNTS[message.chat.id][user.id] += 1
+    chat_id = message.chat.id
+    MSG_COUNTS[chat_id][user.id] += 1
     USER_NAMES[user.id] = user.first_name
     if message.voice or message.audio:
-        VC_POINTS[message.chat.id][user.id] += 3
+        VC_POINTS[chat_id][user.id] += 3
 
+    # Auto VIP Rank-Up Banner on Milestone (50 / 150 / 300 Messages)
+    new_cnt = MSG_COUNTS[chat_id][user.id]
+    if new_cnt in RANK_MILESTONES:
+        new_rank = RANK_MILESTONES[new_cnt]
+        try:
+            dp = await _get_user_dp(client, user.id)
+            tpl = await _get_template_bg()
+            card = _make_single_card(
+                dp,
+                "AUTO RANK UP!",
+                user.first_name,
+                f"New Rank: {new_rank}",
+                f"Milestone: {new_cnt} Messages",
+                template_bg=tpl,
+            )
+            cap = (
+                f"<blockquote><b>🏆 𝐀𝐔𝐓𝐎 𝐕𝐈𝐏 𝐑𝐀𝐍𝐊-𝐔𝐏!</b></blockquote>\n\n"
+                f"👑 <b>Member:</b> <b>{html.escape(user.first_name)}</b>\n"
+                f"✨ <b>New Rank:</b> <code>{new_rank}</code> ({new_cnt} Msgs)\n\n{FOOTER}"
+            )
+            await send_rich_card(client, chat_id, card, cap)
+        except Exception:
+            pass
+
+    # Auto AFK Return Alert
     if user.id in AFK_USERS and not (message.text and message.text.lower().startswith(("/afk", "!afk", ".afk"))):
         info = AFK_USERS.pop(user.id)
         dur = _fmt_time(time.time() - info["time"])
         await send_colored_msg(
             client,
-            message.chat.id,
+            chat_id,
             f"<blockquote><b>✨ {html.escape(user.first_name)} वापस आ गए!</b></blockquote>\n"
             f"⏱ <b>Offline Time:</b> <code>{dur}</code>\n\n{FOOTER}",
             _brand_json_kb(),
             reply_to=message.id,
         )
 
+    # Auto AFK Mention / Reply Alert
     if message.reply_to_message and message.reply_to_message.from_user:
         t_id = message.reply_to_message.from_user.id
         if t_id in AFK_USERS:
@@ -417,13 +455,13 @@ async def group_watcher(client, message: Message):
             dur = _fmt_time(time.time() - info["time"])
             dp = await _get_user_dp(client, t_id)
             tpl = await _get_template_bg()
-            card = _make_single_card(dp, "USER IS AFK", info["name"], f"Since: {dur}", f"Reason: {info['reason']}", (255, 130, 40), template_bg=tpl)
+            card = _make_single_card(dp, "USER IS AFK", info["name"], f"Since: {dur}", f"Reason: {info['reason']}", template_bg=tpl)
             cap = (
                 f"<blockquote><b>💤 {html.escape(info['name'])} अभी Offline हैं!</b></blockquote>\n"
                 f"⏱ <b>Since:</b> <code>{dur}</code>\n"
                 f"💬 <b>Reason:</b> <code>{html.escape(info['reason'])}</code>\n\n{FOOTER}"
             )
-            await send_rich_card(client, message.chat.id, card, cap)
+            await send_rich_card(client, chat_id, card, cap)
 
 # ── 2. GROUP MARRIAGE & ROYAL BANNER (1-TIME LOCK) ────────────
 @bot.on_message(filters.command(["marry", "propose"], prefixes=["/", "!", "."]))
@@ -523,7 +561,7 @@ async def news_wanted_cmd(client, message: Message):
 
     if cmd == "news":
         headline = message.text.split(None, 1)[1] if len(message.command) > 1 else "Group mein bina gaana suney sote hue pakde gaye!"
-        card = _make_single_card(dp, "BREAKING NEWS 24x7", target.first_name, headline[:30], "LIVE REPORT : MGB TV", (245, 35, 55), template_bg=tpl)
+        card = _make_single_card(dp, "BREAKING NEWS 24x7", target.first_name, headline[:30], "LIVE REPORT : MGB TV", template_bg=tpl)
         cap = (
             f"<blockquote><b>📺 𝐌𝐆𝐁 𝐁𝐑𝐄𝐀𝐊𝐈𝐍𝐆 𝐍𝐄𝐖𝐒</b></blockquote>\n\n"
             f"👤 <b>Target:</b> <b>{html.escape(target.first_name)}</b>\n"
@@ -531,7 +569,7 @@ async def news_wanted_cmd(client, message: Message):
         )
     else:
         bounty = f"Rs. {random.randint(5, 99)},00,000"
-        card = _make_single_card(dp, "WANTED DEAD OR ALIVE", target.first_name, f"Reward: {bounty}", "CRIME : VVIP LEGEND", (245, 160, 25), template_bg=tpl)
+        card = _make_single_card(dp, "WANTED DEAD OR ALIVE", target.first_name, f"Reward: {bounty}", "CRIME : VVIP LEGEND", template_bg=tpl)
         cap = (
             f"<blockquote><b>🚨 𝐌𝐆𝐁 𝐖𝐀𝐍𝐓𝐄𝐃 𝐏𝐎𝐒𝐓𝐄𝐑</b></blockquote>\n\n"
             f"👤 <b>Criminal:</b> <b>{html.escape(target.first_name)}</b>\n"
@@ -545,11 +583,11 @@ async def profile_cmd(client, message: Message):
     target = message.reply_to_message.from_user if (message.reply_to_message and message.reply_to_message.from_user) else message.from_user
     msgs = MSG_COUNTS[message.chat.id][target.id] + 1
     partner = MARRIAGES.get(target.id, {}).get("partner_name", "Single")
-    rank = "VVIP LEGEND" if msgs > 150 else ("PRO LISTENER" if msgs > 40 else "RISING STAR")
+    rank = "ROYAL KING" if msgs >= 300 else ("VVIP LEGEND" if msgs >= 150 else ("PRO LISTENER" if msgs >= 50 else "RISING STAR"))
 
     dp = await _get_user_dp(client, target.id)
     tpl = await _get_template_bg()
-    card = _make_single_card(dp, f"VIP RANK : {rank}", target.first_name, f"Chat Score: {msgs} Msgs", f"Partner: {partner}", (20, 215, 145), template_bg=tpl)
+    card = _make_single_card(dp, f"VIP RANK : {rank}", target.first_name, f"Chat Score: {msgs} Msgs", f"Partner: {partner}", template_bg=tpl)
     cap = (
         f"<blockquote><b>💎 𝐌𝐆𝐁 𝐕𝐈𝐏 𝐏𝐑𝐎𝐅𝐈𝐋𝐄 𝐂𝐀𝐑𝐃</b></blockquote>\n\n"
         f"👤 <b>User:</b> <b>{html.escape(target.first_name)}</b>\n"
@@ -584,7 +622,7 @@ async def leaderboard_cmd(client, message: Message):
     tpl = await _get_template_bg()
     badge = "TOP VC ADDICTS" if is_vc else "GROUP LEADERBOARD"
     unit = "Pts" if is_vc else "Msgs"
-    card = _make_single_card(dp, badge, f"#1 {top_name}", f"Top Score: {top_score} {unit}", f"Active Users: {len(data)}", (255, 85, 50), template_bg=tpl)
+    card = _make_single_card(dp, badge, f"#1 {top_name}", f"Top Score: {top_score} {unit}", f"Active Users: {len(data)}", template_bg=tpl)
     await send_rich_card(client, chat_id, card, _build_lb_text(chat_id, is_vc, live=False))
 
     key = (chat_id, "vc" if is_vc else "top")
@@ -599,12 +637,14 @@ async def leaderboard_cmd(client, message: Message):
 
     async def _auto_lb():
         try:
-            for _ in range(15):
+            for _ in range(20):
                 await asyncio.sleep(15)
                 await edit_colored_msg(client, chat_id, msg_id, _build_lb_text(chat_id, is_vc, live=True), rows)
             await edit_colored_msg(client, chat_id, msg_id, _build_lb_text(chat_id, is_vc, live=False), [[_cbtn("🔄 𝐑𝐄𝐅𝐑𝐄𝐒𝐇", style="success", callback_data=f"mgb_lb_ref_{'vc' if is_vc else 'top'}")]])
         except asyncio.CancelledError:
             pass
+        finally:
+            LIVE_LB_TASKS.pop(key, None)
 
     LIVE_LB_TASKS[key] = asyncio.create_task(_auto_lb())
 
