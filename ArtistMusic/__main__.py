@@ -1,14 +1,13 @@
 # ==========================================================
-# Copyright (c) 2026 ArtistBots
+# Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
 # 
-# Project      : ArtistBots API Telegram Music Bot
-# Powered By   : Artist
+# Project      : MGB API Telegram Music Bot
+# Powered By   : ❖ MGB NOT FREE ❖
 # Type         : API Based Telegram Music Bot
 #
-# Bot          : @ArtistApibot
-# Channel      : https://t.me/artistbots
-# GitHub       : https://github.com/elevenyts/ArtistMusic
+# Bot          : @Yasmeen_api_bot
+# Channel      : https://t.me/MGB_CODER
 #
 # Unauthorized copying, modification, or redistribution
 # of this source code without permission is prohibited.
@@ -68,6 +67,28 @@ BOT_COMMANDS = [
     BotCommand("seek", "❖ sᴇᴇᴋ ғᴏʀᴡᴀʀᴅ • sᴋɪᴘ ᴛᴏ sᴘᴇᴄɪғɪᴄ ᴛɪᴍᴇ"),
     BotCommand("seekback", "❖ sᴇᴇᴋ ʙᴀᴄᴋᴡᴀʀᴅ • ɢᴏ ʙᴀᴄᴋ ᴛᴏ ᴘʀᴇᴠɪᴏᴜs ᴛɪᴍᴇ"),
     BotCommand("tagall", "❖ ᴛᴀɢ ᴀʟʟ • ᴍᴇɴᴛɪᴏɴ ᴇᴠᴇʀʏᴏɴᴇ ɪɴ ɢʀᴏᴜᴘ"),
+    # ── MGB VIP NEW FEATURES ──
+    BotCommand("afk", "❖ ᴀғᴋ ᴍᴏᴅᴇ • sᴇᴛ sᴍᴀʀᴛ ᴀғᴋ ᴄᴀʀᴅ"),
+    BotCommand("marry", "❖ ɢʀᴏᴜᴘ ᴍᴀʀʀɪᴀɢᴇ • ᴘʀᴏᴘᴏsᴇ & ɢᴇᴛ ᴄᴇʀᴛɪғɪᴄᴀᴛᴇ"),
+    BotCommand("divorce", "❖ ᴅɪᴠᴏʀᴄᴇ • ᴇɴᴅ ɢʀᴏᴜᴘ ᴍᴀʀʀɪᴀɢᴇ"),
+    BotCommand("news", "❖ ʙʀᴇᴀᴋɪɴɢ ɴᴇᴡs • ᴄʀᴇᴀᴛᴇ ᴛᴠ ɴᴇᴡs ᴄᴀʀᴅ"),
+    BotCommand("wanted", "❖ ᴡᴀɴᴛᴇᴅ ᴘᴏsᴛᴇʀ • ᴍᴀᴋᴇ ᴡᴀɴᴛᴇᴅ ᴄᴀʀᴅ"),
+    BotCommand("profile", "❖ ᴠɪᴘ ᴘʀᴏғɪʟᴇ • sʜᴏᴡ ᴍᴜsɪᴄ & ᴄʜᴀᴛ ᴄᴀʀᴅ"),
+    BotCommand("top", "❖ ᴄʜᴀᴛ ʟᴇᴀᴅᴇʀʙᴏᴀʀᴅ • ᴛᴏᴘ ɢʀᴏᴜᴘ ᴍᴇᴍʙᴇʀs"),
+    BotCommand("vcstats", "❖ ᴠᴄ ʟᴇᴀᴅᴇʀʙᴏᴀʀᴅ • ᴛᴏᴘ ᴠᴄ ᴀᴅᴅɪᴄᴛs"),
+    BotCommand("truth", "❖ ᴛʀᴜᴛʜ ɢᴀᴍᴇ • ᴘʟᴀʏ ᴛʀᴜᴛʜ ᴄʜᴀʟʟᴇɴɢᴇ"),
+    BotCommand("dare", "❖ ᴅᴀʀᴇ ɢᴀᴍᴇ • ᴘʟᴀʏ ᴅᴀʀᴇ ᴄʜᴀʟʟᴇɴɢᴇ"),
+    BotCommand("rps", "❖ ʀᴘs ɢᴀᴍᴇ • ʀᴏᴄᴋ ᴘᴀᴘᴇʀ sᴄɪssᴏʀs"),
+    BotCommand("voteskip", "❖ ᴠᴏᴛᴇ sᴋɪᴘ • ᴅᴇᴍᴏᴄʀᴀᴄʏ ᴛʀᴀᴄᴋ sᴋɪᴘ"),
+    BotCommand("karaoke", "❖ ᴀᴜᴅɪᴏ ғɪʟᴛᴇʀs • ᴋᴀʀᴀᴏᴋᴇ, ʙᴀss & sʟᴏᴡᴇᴅ"),
+    BotCommand("entry", "❖ ᴠᴄ ᴇɴᴛʀʏ ʙɢᴍ • sᴇᴛ ᴠɪᴘ ᴇɴᴛʀʏ sᴏᴜɴᴅ"),
+    BotCommand("sfx", "❖ ᴍᴇᴍᴇ sᴏᴜɴᴅʙᴏᴀʀᴅ • ɪɴsᴛᴀɴᴛ ᴠᴏɪᴄᴇ sғx"),
+    BotCommand("quiz", "❖ ᴍᴜsɪᴄ ǫᴜɪᴢ • ɢᴜᴇss ᴛʜᴇ ʙᴏʟʟʏᴡᴏᴏᴅ sᴏɴɢ"),
+    BotCommand("whisper", "❖ sᴇᴄʀᴇᴛ ᴡʜɪsᴘᴇʀ • sᴇɴᴅ ᴘʀɪᴠᴀᴛᴇ ᴍᴇssᴀɢᴇ"),
+    BotCommand("q", "❖ ǫᴜᴏᴛᴇ sᴛɪᴄᴋᴇʀ • ᴍᴀᴋᴇ ᴍᴇssᴀɢᴇ sᴛɪᴄᴋᴇʀ"),
+    BotCommand("dl", "❖ ʀᴇᴇʟs ᴅᴏᴡɴʟᴏᴀᴅ • ᴅᴏᴡɴʟᴏᴀᴅ ʀᴇᴇʟs & sʜᴏʀᴛs"),
+    BotCommand("score", "❖ ʟɪᴠᴇ ᴄʀɪᴄᴋᴇᴛ • ᴄʜᴇᴄᴋ ʟɪᴠᴇ sᴄᴏʀᴇᴄᴀʀᴅ"),
+    BotCommand("autoclean", "❖ ᴀᴜᴛᴏ ᴄʟᴇᴀɴ • ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴄᴏᴍᴍᴀɴᴅs"),
 ]
 
 
