@@ -529,25 +529,109 @@ async def quote_sticker_cmd(client, message: Message):
     await message.reply_sticker(sticker=st)
 
 # ── 8. AUTO REELS & SHORTS DOWNLOADER (/dl) ───────────────────
-def _sync_ytdlp_download(url: str, out_dir: str) -> str:
+try:
+    from ArtistMusic import yt as artist_yt
+except Exception:
+    artist_yt = None
+
+def _find_yt_cookies() -> str | None:
+    for path in (
+        "cookies.txt",
+        "cookies/cookies.txt",
+        "ArtistMusic/cookies.txt",
+        "ArtistMusic/cookies/cookies.txt",
+    ):
+        if os.path.isfile(path) and os.path.getsize(path) > 100:
+            return path
+    return None
+
+def _extract_yt_id(url: str) -> str | None:
+    m = re.search(r"(?:youtu\.be/|youtube\.com/(?:shorts/|watch\?v=|embed/))([A-Za-z0-9_-]{11})", url)
+    return m.group(1) if m else None
+
+def _sync_ytdlp_download(url: str, out_dir: str, is_yt: bool = False) -> str:
     import yt_dlp
-    opts = {"outtmpl": os.path.join(out_dir, "mgb_v.%(ext)s"), "format": "best[ext=mp4]/best", "quiet": True, "noplaylist": True, "max_filesize": 45 * 1024 * 1024}
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        return ydl.prepare_filename(info)
+    cookie_file = _find_yt_cookies() if is_yt else None
+
+    if not is_yt:
+        opts = {
+            "outtmpl": os.path.join(out_dir, "mgb_v.%(ext)s"),
+            "format": "best[ext=mp4]/best",
+            "quiet": True,
+            "noplaylist": True,
+            "max_filesize": 45 * 1024 * 1024,
+        }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            return ydl.prepare_filename(info)
+
+    # YouTube: try cookies first (if present), else client bypass fallbacks
+    client_sets = [["default"]] if cookie_file else [["ios", "android_vr"], ["tv_embedded", "mweb"], ["android"]]
+    last_err = None
+    for clients in client_sets:
+        opts = {
+            "outtmpl": os.path.join(out_dir, "mgb_yt.%(ext)s"),
+            "format": "best[ext=mp4][height<=720]/best[ext=mp4]/best",
+            "quiet": True,
+            "noplaylist": True,
+            "max_filesize": 45 * 1024 * 1024,
+        }
+        if cookie_file:
+            opts["cookiefile"] = cookie_file
+        else:
+            opts["extractor_args"] = {"youtube": {"player_client": clients}}
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                fp = ydl.prepare_filename(info)
+                if os.path.isfile(fp):
+                    return fp
+        except Exception as e:
+            last_err = e
+    raise last_err or RuntimeError("YouTube download blocked")
 
 @bot.on_message(filters.command(["dl", "reel", "shorts"], prefixes=["/", "!", "."]))
 async def reels_dl_cmd(client, message: Message):
     if len(message.command) < 2:
         return await message.reply_text("📥 <b>Link dein:</b> <code>/dl https://...</code>", parse_mode=enums.ParseMode.HTML)
+
+    url = message.command[1].strip()
+    is_yt = bool(_extract_yt_id(url))
     m = await message.reply_text("<blockquote><b>📥 𝐌𝐆𝐁 𝐇𝐃 𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐡𝐨 𝐫𝐚𝐡𝐚 𝐡𝐚𝐢...</b></blockquote>", parse_mode=enums.ParseMode.HTML)
     td = tempfile.mkdtemp(prefix="mgb_dl_")
+    fp = None
+    from_api = False
+
     try:
-        fp = await asyncio.to_thread(_sync_ytdlp_download, message.command[1], td)
-        await message.reply_video(video=fp, caption=f"<blockquote><b>🎬 𝐌𝐆𝐁 𝐇𝐃 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐄𝐑</b></blockquote>\n\n{FOOTER}", parse_mode=enums.ParseMode.HTML)
+        # 1. YouTube Shorts/Video -> pehle aapke bot ki apni API (ArtistMusic.yt) try karega
+        if is_yt and artist_yt and hasattr(artist_yt, "download"):
+            vid = _extract_yt_id(url)
+            for arg in (vid, url):
+                try:
+                    res = await artist_yt.download(arg, video=True)
+                    path = res[0] if isinstance(res, (tuple, list)) else res
+                    if isinstance(path, str) and os.path.isfile(path):
+                        fp = path
+                        from_api = True
+                        break
+                except Exception:
+                    continue
+
+        # 2. Fallback -> yt-dlp (Instagram Reels / YouTube Cookies & Client Bypass)
+        if not fp:
+            fp = await asyncio.to_thread(_sync_ytdlp_download, url, td, is_yt)
+
+        await message.reply_video(
+            video=fp,
+            caption=f"<blockquote><b>🎬 𝐌𝐆𝐁 𝐇𝐃 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐄𝐑</b></blockquote>\n\n{FOOTER}",
+            parse_mode=enums.ParseMode.HTML,
+        )
         await m.delete()
     except Exception as e:
-        await m.edit_text(f"❌ <b>Download Failed:</b> <code>{html.escape(str(e)[:120])}</code>", parse_mode=enums.ParseMode.HTML)
+        err = str(e)
+        if "Sign in to confirm" in err:
+            err = "YouTube ne Render IP block kiya hai. Repo ke root mein cookies.txt add karein ya API check karein."
+        await m.edit_text(f"❌ <b>Download Failed:</b> <code>{html.escape(err[:160])}</code>", parse_mode=enums.ParseMode.HTML)
     finally:
         for f in os.listdir(td):
             try:
@@ -558,6 +642,11 @@ async def reels_dl_cmd(client, message: Message):
             os.rmdir(td)
         except Exception:
             pass
+        if from_api and fp and os.path.isfile(fp) and "downloads" in fp:
+            try:
+                os.remove(fp)
+            except Exception:
+                pass
 
 # ── 9. LIVE AUTO-REFRESH CRICKET SCORECARD (/score) ───────────
 async def _fetch_live_cricket(live: bool = True) -> str:
