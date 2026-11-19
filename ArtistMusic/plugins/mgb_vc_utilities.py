@@ -1,27 +1,31 @@
 # ═══════════════════════════════════════════════════════════════
 #                  🥀 MGB NOT FREE CODER 💗
-#               © 2026 MGB NOT FREE CODER 🍓
+#               © 2026 @MGB_NOT_FREE_1 🍓
 # ═══════════════════════════════════════════════════════════════
 
 import os
 import io
+import re
 import time
 import json
 import html
 import random
 import asyncio
 import tempfile
-import aiohttp
+import subprocess
+from datetime import datetime, timezone, timedelta
 from collections import defaultdict
+import aiohttp
 from gtts import gTTS
 from PIL import Image, ImageDraw, ImageFont
 from pyrogram import filters, enums
-from pyrogram.types import (
-    Message,
-    CallbackQuery,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
+from pyrogram.types import Message, CallbackQuery
+
+try:
+    import imageio_ffmpeg
+    FFMPEG_BIN = imageio_ffmpeg.get_ffmpeg_exe()
+except Exception:
+    FFMPEG_BIN = "ffmpeg"
 
 try:
     from ShizuMusic import bot
@@ -34,41 +38,31 @@ except Exception:
     tg_call = None
     tg_queue = None
 
-# ── IN-MEMORY STORAGE ─────────────────────────────────────────
-VOTE_SKIP_DATA = defaultdict(set)  # {chat_id: set(user_ids)}
-ENTRY_BGMS = {}                    # {user_id: str}
-WHISPERS = {}                      # {wid: {"sender": int, "target_id": int, "target_uname": str, "text": str}}
-QUIZ_SCORES = defaultdict(int)     # {user_id: points}
-AUTOCLEAN_CHATS = set()            # {chat_id}
+# ── BRANDING & STORAGE ────────────────────────────────────────
+OWNER_UNAME = "MGB_NOT_FREE_1"
+CHANNEL_UNAME = "MGB_CODER"
+FOOTER = f"<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @{OWNER_UNAME}</code>"
+IST = timezone(timedelta(hours=5, minutes=30))
 
-FOOTER = "<code>🍓 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 : @MGB_NOT_FREE2</code>"
+VOTE_SKIP_DATA = defaultdict(set)
+ENTRY_BGMS = {}
+WHISPERS = {}
+QUIZ_SCORES = defaultdict(int)
+QUIZ_ACTIVE = {}
+LIVE_CRIC_TASKS = {}
+AUTOCLEAN_CHATS = set()
 
 QUIZ_BANK = [
-    {
-        "clip": "Tum hi ho, ab tum hi ho, zindagi ab tum hi ho...",
-        "options": ["Aashiqui 2", "Kabir Singh", "Rockstar", "Tamasha"],
-        "ans": 0,
-    },
-    {
-        "clip": "Kesariya tera ishq hai piya, rang jaaun jo main haath lagaun...",
-        "options": ["Pathaan", "Brahmastra", "Jawan", "Animal"],
-        "ans": 1,
-    },
-    {
-        "clip": "Apna bana le piya, apna bana le piya, dil ke nagar mein...",
-        "options": ["Bhediya", "Stree 2", "Luka Chuppi", "Mimi"],
-        "ans": 0,
-    },
-    {
-        "clip": "Channa mereya mereya, channa mereya mereya beliya...",
-        "options": ["Yeh Jawaani", "Ae Dil Hai Mushkil", "Kalank", "Raazi"],
-        "ans": 1,
-    },
-    {
-        "clip": "Arjan Vailly ne, pair jod ke gandasi maari...",
-        "options": ["Gadar 2", "KGF 2", "Animal", "Leo"],
-        "ans": 2,
-    },
+    {"q": "Tum Hi Ho Arijit Singh Aashiqui 2", "opts": ["Aashiqui 2", "Kabir Singh", "Rockstar", "Tamasha"], "ans": 0},
+    {"q": "Kesariya Arijit Singh Brahmastra", "opts": ["Pathaan", "Brahmastra", "Jawan", "Animal"], "ans": 1},
+    {"q": "Apna Bana Le Arijit Singh Bhediya", "opts": ["Bhediya", "Stree 2", "Luka Chuppi", "Mimi"], "ans": 0},
+    {"q": "Channa Mereya Ae Dil Hai Mushkil", "opts": ["Yeh Jawaani", "Ae Dil Hai Mushkil", "Kalank", "Raazi"], "ans": 1},
+    {"q": "Arjan Vailly Animal Bhupinder Babbal", "opts": ["Gadar 2", "KGF 2", "Animal", "Leo"], "ans": 2},
+    {"q": "Chaleya Arijit Singh Jawan", "opts": ["Dunki", "Pathaan", "Tiger 3", "Jawan"], "ans": 3},
+    {"q": "Raataan Lambiyan Jubin Nautiyal Shershaah", "opts": ["Shershaah", "Uri", "Fighter", "Kesari"], "ans": 0},
+    {"q": "Tera Ban Jaunga Kabir Singh", "opts": ["Sanam Teri Kasam", "Kabir Singh", "Half Girlfriend", "Raanjhanaa"], "ans": 1},
+    {"q": "Aayi Nai Stree 2 Pawan Singh", "opts": ["Bhool Bhulaiyaa", "Munjya", "Stree 2", "Bhediya"], "ans": 2},
+    {"q": "Ghungroo Arijit Singh War", "opts": ["War", "Fighter", "Bang Bang", "Dhoom 3"], "ans": 0},
 ]
 
 SFX_TEXTS = {
@@ -78,32 +72,122 @@ SFX_TEXTS = {
     "laugh": "Hahaha! Bhai sahab, gazab comedy!",
 }
 
-# ── 🔘 COLORED HTML BUTTON HELPER (SINGLE EMOJI) ──────────────
-def _btn(text: str, url: str = None, callback_data: str = None, style: str = "primary") -> InlineKeyboardButton:
-    try:
-        return InlineKeyboardButton(text=text, url=url, callback_data=callback_data, style=style)
-    except TypeError:
-        b = InlineKeyboardButton(text=text, url=url, callback_data=callback_data)
-        setattr(b, "style", style)
-        return b
+# ── 🔘 COLORED HTML BUTTON HTTP HELPERS ───────────────────────
+def _cbtn(text: str, style: str = "primary", callback_data: str = None, url: str = None) -> dict:
+    btn = {"text": text, "style": style}
+    if url:
+        btn["url"] = url
+    elif callback_data:
+        btn["callback_data"] = callback_data
+    return btn
 
-async def _make_voice_bio(text: str) -> io.BytesIO:
+async def _bot_api(client, method: str, payload: dict):
+    token = getattr(client, "bot_token", None)
+    if not token:
+        return None
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as s:
+            async with s.post(f"https://api.telegram.org/bot{token}/{method}", json=payload) as r:
+                res = await r.json()
+                if res.get("ok"):
+                    return res.get("result")
+    except Exception:
+        pass
+    return None
+
+async def send_colored_msg(client, chat_id: int, text: str, rows: list, reply_to: int = None):
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML", "reply_markup": {"inline_keyboard": rows}}
+    if reply_to:
+        payload["reply_to_message_id"] = reply_to
+    res = await _bot_api(client, "sendMessage", payload)
+    if res:
+        return res.get("message_id")
+    m = await client.send_message(chat_id, text, parse_mode=enums.ParseMode.HTML)
+    return m.id
+
+async def edit_colored_msg(client, chat_id: int, msg_id: int, text: str, rows: list = None):
+    payload = {"chat_id": chat_id, "message_id": msg_id, "text": text, "parse_mode": "HTML"}
+    if rows is not None:
+        payload["reply_markup"] = {"inline_keyboard": rows}
+    return await _bot_api(client, "editMessageText", payload)
+
+async def edit_colored_caption(client, chat_id: int, msg_id: int, caption: str, rows: list = None):
+    payload = {"chat_id": chat_id, "message_id": msg_id, "caption": caption, "parse_mode": "HTML"}
+    if rows is not None:
+        payload["reply_markup"] = {"inline_keyboard": rows}
+    return await _bot_api(client, "editMessageCaption", payload)
+
+async def send_colored_audio(client, chat_id: int, mp3_bytes: bytes, title: str, performer: str, duration: int, caption: str, rows: list, reply_to: int = None):
+    token = getattr(client, "bot_token", None)
+    if token:
+        try:
+            form = aiohttp.FormData()
+            form.add_field("chat_id", str(chat_id))
+            form.add_field("caption", caption)
+            form.add_field("parse_mode", "HTML")
+            form.add_field("title", title)
+            form.add_field("performer", performer)
+            form.add_field("duration", str(duration))
+            form.add_field("reply_markup", json.dumps({"inline_keyboard": rows}))
+            if reply_to:
+                form.add_field("reply_to_message_id", str(reply_to))
+            form.add_field("audio", mp3_bytes, filename="mgb_clip.mp3", content_type="audio/mpeg")
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=25)) as s:
+                async with s.post(f"https://api.telegram.org/bot{token}/sendAudio", data=form) as r:
+                    res = await r.json()
+                    if res.get("ok"):
+                        return res.get("result", {}).get("message_id")
+        except Exception:
+            pass
+    bio = io.BytesIO(mp3_bytes)
+    bio.name = "mgb_clip.mp3"
+    m = await client.send_audio(chat_id, bio, title=title, performer=performer, duration=duration, caption=caption, parse_mode=enums.ParseMode.HTML)
+    return m.id
+
+# ── REAL STUDIO AUDIO CLIP ENGINE (iTunes + FFmpeg) ───────────
+def _convert_to_clean_mp3(raw_bytes: bytes, max_sec: int = 20) -> bytes:
+    with tempfile.TemporaryDirectory(prefix="mgb_aud_") as td:
+        inp = os.path.join(td, "in.m4a")
+        out = os.path.join(td, "out.mp3")
+        with open(inp, "wb") as f:
+            f.write(raw_bytes)
+        cmd = [FFMPEG_BIN, "-y", "-i", inp, "-t", str(max_sec), "-map_metadata", "-1", "-vn", "-c:a", "libmp3lame", "-b:a", "128k", out]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+        if os.path.exists(out) and os.path.getsize(out) > 1000:
+            with open(out, "rb") as f:
+                return f.read()
+    return raw_bytes
+
+async def _fetch_real_song_clip(query: str):
+    try:
+        params = {"term": query, "media": "music", "entity": "song", "country": "IN", "limit": "5"}
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=12)) as s:
+            async with s.get("https://itunes.apple.com/search", params=params) as r:
+                data = await r.json(content_type=None)
+            for item in data.get("results", []):
+                purl = item.get("previewUrl")
+                if purl:
+                    async with s.get(purl) as ar:
+                        if ar.status == 200:
+                            raw = await ar.read()
+                            return await asyncio.to_thread(_convert_to_clean_mp3, raw, 20)
+    except Exception:
+        pass
+    return None
+
+async def _make_sfx_mp3(text: str) -> bytes:
     def _gen():
         b = io.BytesIO()
-        b.name = "mgb_audio.ogg"
         gTTS(text=text, lang="hi", tld="co.in", slow=False).write_to_fp(b)
-        b.seek(0)
-        return b
+        return _convert_to_clean_mp3(b.getvalue(), 10)
     return await asyncio.to_thread(_gen)
 
 # ── 1. DEMOCRACY VOTE-TO-SKIP (/voteskip) ─────────────────────
 @bot.on_message(filters.command(["voteskip", "vskip"], prefixes=["/", "!", "."]))
 async def voteskip_cmd(client, message: Message):
-    chat_id = message.chat.id
-    user = message.from_user
+    chat_id, user = message.chat.id, message.from_user
     if not user:
         return
-
     VOTE_SKIP_DATA[chat_id].add(user.id)
     count = len(VOTE_SKIP_DATA[chat_id])
 
@@ -114,21 +198,18 @@ async def voteskip_cmd(client, message: Message):
                 await tg_call.play_next(chat_id)
             except Exception:
                 pass
-        return await message.reply_text(
-            f"<blockquote><b>⏭ 𝐕𝐎𝐓𝐄 𝐒𝐊𝐈𝐏 𝐒𝐔𝐂𝐂𝐄𝐒𝐒 (𝟑/𝟑)</b></blockquote>\n\n"
-            f"✅ <b>3 Members ne vote kar diya! Current track skip kar diya gaya hai.</b>\n\n{FOOTER}",
-            parse_mode=enums.ParseMode.HTML,
+        return await send_colored_msg(
+            client, chat_id,
+            f"<blockquote><b>⏭ 𝐕𝐎𝐓𝐄 𝐒𝐊𝐈𝐏 𝐒𝐔𝐂𝐂𝐄𝐒𝐒 (𝟑/𝟑)</b></blockquote>\n\n✅ <b>Current track skip kar diya gaya!</b>\n\n{FOOTER}",
+            [[_cbtn("🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒", style="success", url=f"https://t.me/{CHANNEL_UNAME}")]], reply_to=message.id,
         )
 
-    kb = InlineKeyboardMarkup([
-        [_btn(f"⏭ 𝐕𝐎𝐓𝐄 𝐒𝐊𝐈𝐏 ({count}/3)", callback_data="mgb_vskip_btn", style="danger")]
-    ])
-    await message.reply_text(
+    rows = [[_cbtn(f"⏭ 𝐕𝐎𝐓𝐄 𝐒𝐊𝐈𝐏 ({count}/3)", style="danger", callback_data="mgb_vskip_btn")]]
+    await send_colored_msg(
+        client, chat_id,
         f"<blockquote><b>🗳 𝐃𝐄𝐌𝐎𝐂𝐑𝐀𝐂𝐘 𝐕𝐎𝐓𝐄 𝐓𝐎 𝐒𝐊𝐈𝐏</b></blockquote>\n\n"
-        f"👤 <b>Started By:</b> {user.mention}\n"
-        f"📊 <b>Votes:</b> <code>{count}/3 Required</code>\n\n{FOOTER}",
-        reply_markup=kb,
-        parse_mode=enums.ParseMode.HTML,
+        f"👤 <b>By:</b> <b>{html.escape(user.first_name)}</b>\n📊 <b>Votes:</b> <code>{count}/3 Required</code>\n\n{FOOTER}",
+        rows, reply_to=message.id,
     )
 
 @bot.on_callback_query(filters.regex(r"^mgb_vskip_btn$"))
@@ -145,70 +226,58 @@ async def voteskip_cb(client, query: CallbackQuery):
                 await tg_call.play_next(chat_id)
             except Exception:
                 pass
-        return await query.message.edit_text(
-            f"<blockquote><b>⏭ 𝐕𝐎𝐓𝐄 𝐒𝐊𝐈𝐏 𝐒𝐔𝐂𝐂𝐄𝐒𝐒 (𝟑/𝟑)</b></blockquote>\n\n"
-            f"✅ <b>Majority vote poora hua! Gaana skip kar diya gaya hai.</b>\n\n{FOOTER}",
-            parse_mode=enums.ParseMode.HTML,
+        return await edit_colored_msg(
+            client, chat_id, query.message.id,
+            f"<blockquote><b>⏭ 𝐕𝐎𝐓𝐄 𝐒𝐊𝐈𝐏 𝐒𝐔𝐂𝐂𝐄𝐒𝐒 (𝟑/𝟑)</b></blockquote>\n\n✅ <b>Gaana skip kar diya gaya hai!</b>\n\n{FOOTER}",
+            [],
         )
 
     await query.answer(f"✅ Vote Added ({count}/3)", show_alert=False)
-    kb = InlineKeyboardMarkup([
-        [_btn(f"⏭ 𝐕𝐎𝐓𝐄 𝐒𝐊𝐈𝐏 ({count}/3)", callback_data="mgb_vskip_btn", style="danger")]
-    ])
-    await query.message.edit_text(
-        f"<blockquote><b>🗳 𝐃𝐄𝐌𝐎𝐂𝐑𝐀𝐂𝐘 𝐕𝐎𝐓𝐄 𝐓𝐎 𝐒𝐊𝐈𝐏</b></blockquote>\n\n"
-        f"📊 <b>Current Votes:</b> <code>{count}/3 Required</code>\n\n{FOOTER}",
-        reply_markup=kb,
-        parse_mode=enums.ParseMode.HTML,
+    await edit_colored_msg(
+        client, chat_id, query.message.id,
+        f"<blockquote><b>🗳 𝐃𝐄𝐌𝐎𝐂𝐑𝐀𝐂𝐘 𝐕𝐎𝐓𝐄 𝐓𝐎 𝐒𝐊𝐈𝐏</b></blockquote>\n\n📊 <b>Current Votes:</b> <code>{count}/3 Required</code>\n\n{FOOTER}",
+        [[_cbtn(f"⏭ 𝐕𝐎𝐓𝐄 𝐒𝐊𝐈𝐏 ({count}/3)", style="danger", callback_data="mgb_vskip_btn")]],
     )
 
 # ── 2. LIVE KARAOKE & AUDIO PRESETS (/karaoke) ────────────────
-def _karaoke_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
+def _karaoke_rows() -> list:
+    return [
         [
-            _btn("🎤 𝐊𝐀𝐑𝐀𝐎𝐊𝐄", callback_data="mgb_eq_karaoke", style="primary"),
-            _btn("🔊 𝐁𝐀𝐒𝐒𝐁𝐎𝐎𝐒𝐓", callback_data="mgb_eq_bass", style="danger"),
+            _cbtn("🎤 𝐊𝐀𝐑𝐀𝐎𝐊𝐄", style="primary", callback_data="mgb_eq_karaoke"),
+            _cbtn("🔊 𝐁𝐀𝐒𝐒𝐁𝐎𝐎𝐒𝐓", style="danger", callback_data="mgb_eq_bass"),
         ],
         [
-            _btn("🌙 𝐒𝐋𝐎𝐖+𝐑𝐄𝐕𝐄𝐑𝐁", callback_data="mgb_eq_slowed", style="success"),
-            _btn("🔄 𝐍𝐎𝐑𝐌𝐀𝐋", callback_data="mgb_eq_normal", style="primary"),
+            _cbtn("🌙 𝐒𝐋𝐎𝐖+𝐑𝐄𝐕𝐄𝐑𝐁", style="success", callback_data="mgb_eq_slowed"),
+            _cbtn("🔄 𝐍𝐎𝐑𝐌𝐀𝐋", style="primary", callback_data="mgb_eq_normal"),
         ],
-    ])
+    ]
 
 @bot.on_message(filters.command(["karaoke", "eq", "filter"], prefixes=["/", "!", "."]))
 async def karaoke_cmd(client, message: Message):
-    await message.reply_text(
-        f"<blockquote><b>🎛 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐕𝐂 𝐀𝐔𝐃𝐈𝐎 𝐅𝐈𝐋𝐓𝐄𝐑𝐒</b></blockquote>\n\n"
-        f"🎧 <b>Neeche button daba kar live Voice Chat mode chunein:</b>\n\n{FOOTER}",
-        reply_markup=_karaoke_kb(),
-        parse_mode=enums.ParseMode.HTML,
+    await send_colored_msg(
+        client, message.chat.id,
+        f"<blockquote><b>🎛 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐕𝐂 𝐀𝐔𝐃𝐈𝐎 𝐅𝐈𝐋𝐓𝐄𝐑𝐒</b></blockquote>\n\n🎧 <b>Live Voice Chat preset chunein:</b>\n\n{FOOTER}",
+        _karaoke_rows(), reply_to=message.id,
     )
 
 @bot.on_callback_query(filters.regex(r"^mgb_eq_(karaoke|bass|slowed|normal)$"))
 async def karaoke_cb(client, query: CallbackQuery):
     mode = query.matches[0].group(1)
-    names = {
-        "karaoke": "🎤 Karaoke Vocal-Cut Mode",
-        "bass": "🔊 Extreme BassBoost Mode",
-        "slowed": "🌙 Slowed + Reverb Mode",
-        "normal": "🔄 Original Studio Audio",
-    }
-    chat_id = query.message.chat.id
+    names = {"karaoke": "🎤 Karaoke Vocal-Cut", "bass": "🔊 Extreme BassBoost", "slowed": "🌙 Slowed + Reverb", "normal": "🔄 Original Studio"}
     if tg_call and tg_queue:
         try:
-            cur = tg_queue.get_current(chat_id)
+            cur = tg_queue.get_current(query.message.chat.id)
             if cur and hasattr(tg_call, "seek_stream"):
-                await tg_call.seek_stream(chat_id, int(getattr(cur, "time", 0) or 1))
+                await tg_call.seek_stream(query.message.chat.id, int(getattr(cur, "time", 0) or 1))
         except Exception:
             pass
-
-    await query.answer(f"✅ {names[mode]} Activated!", show_alert=False)
-    await query.message.edit_text(
+    await query.answer(f"✅ {names[mode]} ON!", show_alert=False)
+    await edit_colored_msg(
+        client, query.message.chat.id, query.message.id,
         f"<blockquote><b>🎛 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐕𝐂 𝐀𝐔𝐃𝐈𝐎 𝐅𝐈𝐋𝐓𝐄𝐑𝐒</b></blockquote>\n\n"
         f"✅ <b>Active Preset:</b> <code>{names[mode]}</code>\n"
-        f"👤 <b>Changed By:</b> {query.from_user.mention}\n\n{FOOTER}",
-        reply_markup=_karaoke_kb(),
-        parse_mode=enums.ParseMode.HTML,
+        f"👤 <b>By:</b> <b>{html.escape(query.from_user.first_name)}</b>\n\n{FOOTER}",
+        _karaoke_rows(),
     )
 
 # ── 3. CUSTOM VC ENTRY BGM (/entry) ───────────────────────────
@@ -219,216 +288,224 @@ async def entry_bgm_cmd(client, message: Message):
         return
     theme = message.text.split(None, 1)[1] if len(message.command) > 1 else f"Swagat karo, VVIP {user.first_name} ki entry ho chuki hai!"
     ENTRY_BGMS[user.id] = theme
-
-    kb = InlineKeyboardMarkup([
-        [_btn("🔊 𝐓𝐄𝐒𝐓 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌", callback_data=f"mgb_entry_play_{user.id}", style="success")]
-    ])
-    await message.reply_text(
+    rows = [[_cbtn("🔊 𝐓𝐄𝐒𝐓 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌", style="success", callback_data=f"mgb_entry_play_{user.id}")]]
+    await send_colored_msg(
+        client, message.chat.id,
         f"<blockquote><b>🔥 𝐕𝐈𝐏 𝐕𝐂 𝐄𝐍𝐓𝐑𝐘 𝐁𝐆𝐌 𝐒𝐄𝐓</b></blockquote>\n\n"
-        f"👤 <b>VIP Member:</b> {user.mention}\n"
-        f"🎵 <b>Entry Line:</b> <code>{html.escape(theme)}</code>\n\n{FOOTER}",
-        reply_markup=kb,
-        parse_mode=enums.ParseMode.HTML,
+        f"👤 <b>VIP:</b> <b>{html.escape(user.first_name)}</b>\n🎵 <b>Line:</b> <code>{html.escape(theme)}</code>\n\n{FOOTER}",
+        rows, reply_to=message.id,
     )
 
 @bot.on_callback_query(filters.regex(r"^mgb_entry_play_(\d+)$"))
 async def entry_play_cb(client, query: CallbackQuery):
     uid = int(query.matches[0].group(1))
-    line = ENTRY_BGMS.get(uid, f"VIP {query.from_user.first_name} has entered the voice chat!")
-    await query.answer("🔊 Playing VIP Entry BGM...", show_alert=False)
-    v_bio = await _make_voice_bio(line)
-    await client.send_voice(
-        chat_id=query.message.chat.id,
-        voice=v_bio,
-        caption=f"<blockquote><b>🔥 𝐕𝐈𝐏 𝐄𝐍𝐓𝐑𝐘 𝐀𝐋𝐄𝐑𝐓</b></blockquote>\n\n{FOOTER}",
-        parse_mode=enums.ParseMode.HTML,
-    )
-
+    line = ENTRY_BGMS.get(uid, f"VIP {query.from_user.first_name} has entered!")
+    await query.answer("🔊 Sending Entry Audio...", show_alert=False)
+    mp3 = await _make_sfx_mp3(line)
+    await send_colored_audio(
+        client, query.message.chat.id, mp3, "VIP Entry BGM", f"@{OWNER_UNAME}", 5,
+        f"<blockquote><b>🔥 𝐕𝐈𝐏 𝐄𝐍𝐓𝐑𝐘 𝐀𝐋𝐄𝐑𝐓</b></blockquote>\n\n{FOOTER}",
+        [[_cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="primary", url=f"https://t.me/{OWNER_UNAME}")]],
+        )
 # ── 4. LIVE MEME SOUNDBOARD (/sfx) ────────────────────────────
-def _sfx_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
+def _sfx_rows() -> list:
+    return [
         [
-            _btn("👏 𝐂𝐋𝐀𝐏", callback_data="mgb_sfx_clap", style="primary"),
-            _btn("💀 𝐁𝐑𝐔𝐇", callback_data="mgb_sfx_bruh", style="danger"),
+            _cbtn("👏 𝐂𝐋𝐀𝐏", style="primary", callback_data="mgb_sfx_clap"),
+            _cbtn("💀 𝐁𝐑𝐔𝐇", style="danger", callback_data="mgb_sfx_bruh"),
         ],
         [
-            _btn("🥁 𝐃𝐑𝐔𝐌𝐑𝐎𝐋𝐋", callback_data="mgb_sfx_drum", style="success"),
-            _btn("😂 𝐋𝐀𝐔𝐆𝐇", callback_data="mgb_sfx_laugh", style="primary"),
+            _cbtn("🥁 𝐃𝐑𝐔𝐌𝐑𝐎𝐋𝐋", style="success", callback_data="mgb_sfx_drum"),
+            _cbtn("😂 𝐋𝐀𝐔𝐆𝐇", style="primary", callback_data="mgb_sfx_laugh"),
         ],
-    ])
+    ]
 
 @bot.on_message(filters.command(["sfx", "soundboard"], prefixes=["/", "!", "."]))
 async def sfx_cmd(client, message: Message):
-    await message.reply_text(
-        f"<blockquote><b>🔊 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐌𝐄𝐌𝐄 𝐒𝐎𝐔𝐍𝐃𝐁𝐎𝐀𝐑𝐃</b></blockquote>\n\n"
-        f"👇 <b>Button dabayein instant voice effect bhejne ke liye:</b>\n\n{FOOTER}",
-        reply_markup=_sfx_kb(),
-        parse_mode=enums.ParseMode.HTML,
+    await send_colored_msg(
+        client, message.chat.id,
+        f"<blockquote><b>🔊 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐌𝐄𝐌𝐄 𝐒𝐎𝐔𝐍𝐃𝐁𝐎𝐀𝐑𝐃</b></blockquote>\n\n👇 <b>Instant effect ke liye button dabayein:</b>\n\n{FOOTER}",
+        _sfx_rows(), reply_to=message.id,
     )
 
 @bot.on_callback_query(filters.regex(r"^mgb_sfx_(clap|bruh|drum|laugh)$"))
 async def sfx_cb(client, query: CallbackQuery):
     key = query.matches[0].group(1)
-    await query.answer(f"🔊 Sending {key.upper()} SFX...", show_alert=False)
-    v_bio = await _make_voice_bio(SFX_TEXTS[key])
-    await client.send_voice(
-        chat_id=query.message.chat.id,
-        voice=v_bio,
-        caption=f"🔊 <b>SFX:</b> <code>{key.upper()}</code> by {query.from_user.mention}\n\n{FOOTER}",
-        parse_mode=enums.ParseMode.HTML,
+    await query.answer(f"🔊 Sending {key.upper()}...", show_alert=False)
+    mp3 = await _make_sfx_mp3(SFX_TEXTS[key])
+    await send_colored_audio(
+        client, query.message.chat.id, mp3, f"SFX • {key.upper()}", f"@{OWNER_UNAME}", 4,
+        f"🔊 <b>SFX:</b> <code>{key.upper()}</code> by <b>{html.escape(query.from_user.first_name)}</b>\n\n{FOOTER}",
+        [[_cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="success", url=f"https://t.me/{OWNER_UNAME}")]],
     )
 
-# ── 5. VC MUSIC QUIZ (/quiz) ──────────────────────────────────
+# ── 5. REAL MUSIC CLIP QUIZ (1-TIME PICK LOCK) ────────────────
 @bot.on_message(filters.command(["quiz", "mquiz"], prefixes=["/", "!", "."]))
 async def music_quiz_cmd(client, message: Message):
+    wait_m = await message.reply_text("🎧 <b>Real Music Clip load ho raha hai...</b>", parse_mode=enums.ParseMode.HTML)
     idx = random.randrange(len(QUIZ_BANK))
     q = QUIZ_BANK[idx]
+
+    mp3 = await _fetch_real_song_clip(q["q"])
+    if not mp3:
+        idx = 0
+        q = QUIZ_BANK[0]
+        mp3 = await _fetch_real_song_clip(q["q"])
+    try:
+        await wait_m.delete()
+    except Exception:
+        pass
+    if not mp3:
+        return await message.reply_text("❌ <b>Music clip fetch nahi ho paya, dobara /quiz try karein!</b>", parse_mode=enums.ParseMode.HTML)
+
+    qid = f"{int(time.time())}{random.randint(10,99)}"
     styles = ["primary", "success", "danger", "primary"]
-    rows = []
-    for i, opt in enumerate(q["options"]):
-        rows.append([_btn(f"🎵 {opt}", callback_data=f"mgb_quiz_{idx}_{i}", style=styles[i])])
+    rows = [[_cbtn(f"🎵 {opt}", style=styles[i], callback_data=f"mgb_qz_{qid}_{idx}_{i}")] for i, opt in enumerate(q["opts"])]
 
-    v_bio = await _make_voice_bio(f"Is gaane ki movie pehchano: {q['clip']}")
-    await message.reply_voice(
-        voice=v_bio,
-        caption=(
-            f"<blockquote><b>🎧 𝐌𝐆𝐁 𝐕𝐂 𝐌𝐔𝐒𝐈𝐂 𝐐𝐔𝐈𝐙</b></blockquote>\n\n"
-            f"🎶 <b>Lyric Clip:</b> <i>\"{q['clip']}\"</i>\n"
-            f"👇 <b>Sahi Movie ka naam chunein:</b>\n\n{FOOTER}"
-        ),
-        reply_markup=InlineKeyboardMarkup(rows),
-        parse_mode=enums.ParseMode.HTML,
+    cap = (
+        f"<blockquote><b>🎧 𝐌𝐆𝐁 𝐑𝐄𝐀𝐋 𝐌𝐔𝐒𝐈𝐂 𝐐𝐔𝐈𝐙</b></blockquote>\n\n"
+        f"🎶 <b>Asli gaana sunein aur 1 baar sahi Movie chunein!</b>\n"
+        f"⏱ <b>Time Left:</b> <code>30s</code>\n\n{FOOTER}"
     )
+    msg_id = await send_colored_audio(
+        client, message.chat.id, mp3, "🎵 Guess The Movie", f"@{OWNER_UNAME}", 20, cap, rows, reply_to=message.id
+    )
+    QUIZ_ACTIVE[qid] = {"done": False, "chat_id": message.chat.id, "msg_id": msg_id}
 
-@bot.on_callback_query(filters.regex(r"^mgb_quiz_(\d+)_(\d+)$"))
+    async def _countdown():
+        for rem in (20, 10):
+            await asyncio.sleep(10)
+            if QUIZ_ACTIVE.get(qid, {}).get("done"):
+                return
+            await edit_colored_caption(
+                client, message.chat.id, msg_id,
+                f"<blockquote><b>🎧 𝐌𝐆𝐁 𝐑𝐄𝐀𝐋 𝐌𝐔𝐒𝐈𝐂 𝐐𝐔𝐈𝐙</b></blockquote>\n\n"
+                f"🎶 <b>Asli gaana sunein aur 1 baar sahi Movie chunein!</b>\n"
+                f"⏱ <b>Time Left:</b> <code>{rem}s</code>\n\n{FOOTER}",
+                rows,
+            )
+        await asyncio.sleep(10)
+        if not QUIZ_ACTIVE.get(qid, {}).get("done"):
+            QUIZ_ACTIVE.pop(qid, None)
+            await edit_colored_caption(
+                client, message.chat.id, msg_id,
+                f"<blockquote><b>⏰ 𝐐𝐔𝐈𝐙 𝐓𝐈𝐌𝐄 𝐔𝐏!</b></blockquote>\n\n"
+                f"✅ <b>Correct Movie:</b> <code>{q['opts'][q['ans']]}</code>\n\n{FOOTER}",
+                [],
+            )
+
+    asyncio.create_task(_countdown())
+
+@bot.on_callback_query(filters.regex(r"^mgb_qz_(\d+)_(\d+)_(\d+)$"))
 async def music_quiz_cb(client, query: CallbackQuery):
-    q_idx, ans_idx = int(query.matches[0].group(1)), int(query.matches[0].group(2))
+    qid, q_idx, ans_idx = query.matches[0].group(1), int(query.matches[0].group(2)), int(query.matches[0].group(3))
     q = QUIZ_BANK[q_idx]
-    if ans_idx != q["ans"]:
-        return await query.answer("❌ Galat Jawab! Dobara try karein.", show_alert=True)
+    state = QUIZ_ACTIVE.get(qid)
+    if not state or state.get("done"):
+        return await query.answer("🔒 Yeh quiz khatam ho chuka hai!", show_alert=True)
 
-    QUIZ_SCORES[query.from_user.id] += 10
-    pts = QUIZ_SCORES[query.from_user.id]
-    await query.answer("🎉 Sahi Jawab! +10 Points!", show_alert=False)
-    await query.message.edit_caption(
-        caption=(
+    state["done"] = True
+    QUIZ_ACTIVE.pop(qid, None)
+
+    picked = q["opts"][ans_idx]
+    correct = q["opts"][q["ans"]]
+
+    if ans_idx == q["ans"]:
+        QUIZ_SCORES[query.from_user.id] += 10
+        pts = QUIZ_SCORES[query.from_user.id]
+        await query.answer("🎉 Sahi Jawab! +10 Points!", show_alert=False)
+        await edit_colored_caption(
+            client, query.message.chat.id, query.message.id,
             f"<blockquote><b>🏆 𝐐𝐔𝐈𝐙 𝐖𝐈𝐍𝐍𝐄𝐑</b></blockquote>\n\n"
-            f"👤 <b>Winner:</b> {query.from_user.mention}\n"
-            f"✅ <b>Correct Answer:</b> <code>{q['options'][q['ans']]}</code>\n"
-            f"⭐ <b>Total Quiz Score:</b> <code>{pts} Points</code>\n\n{FOOTER}"
-        ),
-        parse_mode=enums.ParseMode.HTML,
-    )
+            f"👤 <b>Winner:</b> <b>{html.escape(query.from_user.first_name)}</b>\n"
+            f"✅ <b>Correct Movie:</b> <code>{correct}</code>\n"
+            f"⭐ <b>Total Score:</b> <code>{pts} Points</code>\n\n{FOOTER}",
+            [],
+        )
+    else:
+        await query.answer("❌ Galat Jawab! Chance Khatam!", show_alert=True)
+        await edit_colored_caption(
+            client, query.message.chat.id, query.message.id,
+            f"<blockquote><b>❌ 𝐆𝐀𝐋𝐀𝐓 𝐉𝐀𝐖𝐀𝐁</b></blockquote>\n\n"
+            f"👤 <b>Player:</b> <b>{html.escape(query.from_user.first_name)}</b>\n"
+            f"❌ <b>Your Pick:</b> <code>{picked}</code>\n"
+            f"✅ <b>Correct Movie:</b> <code>{correct}</code>\n\n{FOOTER}",
+            [],
+        )
+
 # ── 6. SECRET WHISPER (/whisper) ──────────────────────────────
 @bot.on_message(filters.command(["whisper", "w"], prefixes=["/", "!", "."]))
 async def whisper_cmd(client, message: Message):
-    target_id = 0
-    target_uname = ""
-    secret_text = ""
-
+    target_id, target_uname, secret_text = 0, "", ""
     if message.reply_to_message and message.reply_to_message.from_user:
         if len(message.command) < 2:
-            return await message.reply_text("🔒 <b>Reply karke secret likhein:</b> <code>/whisper Hello</code>", parse_mode=enums.ParseMode.HTML)
+            return await message.reply_text("🔒 <b>Reply karke likhein:</b> <code>/whisper Hello</code>", parse_mode=enums.ParseMode.HTML)
         target_id = message.reply_to_message.from_user.id
         target_uname = message.reply_to_message.from_user.first_name
         secret_text = message.text.split(None, 1)[1]
     else:
         if len(message.command) < 3:
-            return await message.reply_text("🔒 <b>Format:</b> <code>/whisper @username Secret Message</code>", parse_mode=enums.ParseMode.HTML)
+            return await message.reply_text("🔒 <b>Format:</b> <code>/whisper @username Secret</code>", parse_mode=enums.ParseMode.HTML)
         target_uname = message.command[1].lstrip("@")
         secret_text = message.text.split(None, 2)[2]
 
     wid = f"{int(time.time()*1000)}_{random.randint(100,999)}"
-    WHISPERS[wid] = {
-        "sender": message.from_user.id,
-        "target_id": target_id,
-        "target_uname": target_uname.lower(),
-        "text": secret_text[:180],
-    }
+    WHISPERS[wid] = {"sender": message.from_user.id, "target_id": target_id, "target_uname": target_uname.lower(), "text": secret_text[:180]}
     try:
         await message.delete()
     except Exception:
         pass
 
-    kb = InlineKeyboardMarkup([
-        [_btn("🔒 𝐕𝐈𝐄𝐖 𝐒𝐄𝐂𝐑𝐄𝐓", callback_data=f"mgb_wsp_{wid}", style="primary")]
-    ])
-    await client.send_message(
-        chat_id=message.chat.id,
-        text=(
-            f"<blockquote><b>🤫 𝐌𝐆𝐁 𝐒𝐄𝐂𝐑𝐄𝐓 𝐖𝐇𝐈𝐒𝐏𝐄𝐑</b></blockquote>\n\n"
-            f"👤 <b>From:</b> {message.from_user.mention}\n"
-            f"🎯 <b>For:</b> <code>@{html.escape(target_uname)}</code>\n\n{FOOTER}"
-        ),
-        reply_markup=kb,
-        parse_mode=enums.ParseMode.HTML,
+    await send_colored_msg(
+        client, message.chat.id,
+        f"<blockquote><b>🤫 𝐌𝐆𝐁 𝐒𝐄𝐂𝐑𝐄𝐓 𝐖𝐇𝐈𝐒𝐏𝐄𝐑</b></blockquote>\n\n"
+        f"👤 <b>From:</b> <b>{html.escape(message.from_user.first_name)}</b>\n"
+        f"🎯 <b>For:</b> <code>@{html.escape(target_uname)}</code>\n\n{FOOTER}",
+        [[_cbtn("🔒 𝐕𝐈𝐄𝐖 𝐒𝐄𝐂𝐑𝐄𝐓", style="primary", callback_data=f"mgb_wsp_{wid}")]],
     )
 
 @bot.on_callback_query(filters.regex(r"^mgb_wsp_(.+)$"))
 async def whisper_cb(client, query: CallbackQuery):
-    wid = query.matches[0].group(1)
-    data = WHISPERS.get(wid)
+    data = WHISPERS.get(query.matches[0].group(1))
     if not data:
-        return await query.answer("❌ Yeh whisper expire ho gaya hai!", show_alert=True)
-
+        return await query.answer("❌ Yeh whisper expire ho gaya!", show_alert=True)
     u = query.from_user
-    allowed = (
-        u.id == data["sender"]
-        or (data["target_id"] and u.id == data["target_id"])
-        or (u.username and u.username.lower() == data["target_uname"])
-    )
+    allowed = u.id == data["sender"] or (data["target_id"] and u.id == data["target_id"]) or (u.username and u.username.lower() == data["target_uname"])
     if not allowed:
         return await query.answer("❌ Yeh secret whisper aapke liye nahi hai!", show_alert=True)
-
-    await query.answer(f"🔒 Secret Message:\n\n{data['text']}", show_alert=True)
+    await query.answer(f"🔒 Secret:\n\n{data['text']}", show_alert=True)
 
 # ── 7. QUOTE STICKER MAKER (/q) ───────────────────────────────
 def _build_quote_sticker(name: str, text: str, dp_bytes: bytes = None) -> io.BytesIO:
     W, H = 512, 300
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    draw.rounded_rectangle((115, 30, 495, 260), radius=28, fill=(24, 24, 38, 255), outline=(255, 70, 140, 255), width=3)
-
-    if dp_bytes:
-        try:
-            av = Image.open(io.BytesIO(dp_bytes)).convert("RGBA").resize((85, 85), Image.LANCZOS)
-        except Exception:
-            av = Image.new("RGBA", (85, 85), (110, 60, 220, 255))
-    else:
-        av = Image.new("RGBA", (85, 85), (110, 60, 220, 255))
-
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle((115, 30, 495, 260), radius=28, fill=(20, 20, 36, 255), outline=(255, 70, 140, 255), width=4)
+    av = Image.open(io.BytesIO(dp_bytes)).convert("RGBA").resize((85, 85), Image.LANCZOS) if dp_bytes else Image.new("RGBA", (85, 85), (110, 60, 220, 255))
     mask = Image.new("L", (85, 85), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, 85, 85), fill=255)
     img.paste(av, (15, 40), mask)
-
     try:
-        f_name = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
-        f_txt = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-        f_wm = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 14)
+        f_n = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
+        f_t = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 19)
+        f_w = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 14)
     except Exception:
-        f_name = f_txt = f_wm = ImageFont.load_default()
-
-    draw.text((135, 48), name[:20], fill=(255, 105, 165), font=f_name)
-
-    words = text.split()
+        f_n = f_t = f_w = ImageFont.load_default()
+    d.text((135, 48), name[:20], fill=(255, 110, 175), font=f_n)
     lines, cur = [], ""
-    for w in words:
-        if len(cur + " " + w) <= 26:
+    for w in text.split():
+        if len(cur + " " + w) <= 25:
             cur = (cur + " " + w).strip()
         else:
             lines.append(cur)
             cur = w
     if cur:
         lines.append(cur)
-
     y = 88
-    for line in lines[:4]:
-        draw.text((135, y), line, fill=(245, 245, 255), font=f_txt)
+    for ln in lines[:4]:
+        d.text((135, y), ln, fill=(245, 245, 255), font=f_t)
         y += 30
-
-    draw.text((290, 232), "@MGB_NOT_FREE1", fill=(140, 140, 180), font=f_wm)
-
+    d.text((280, 232), f"@{OWNER_UNAME}", fill=(160, 160, 210), font=f_w)
     out = io.BytesIO()
     out.name = "mgb_quote.webp"
     img.save(out, format="WEBP")
@@ -440,11 +517,7 @@ async def quote_sticker_cmd(client, message: Message):
     rep = message.reply_to_message
     if not rep or not (rep.text or rep.caption):
         return await message.reply_text("💬 <b>Kisi text message par reply karke <code>/q</code> likhein!</b>", parse_mode=enums.ParseMode.HTML)
-
     u = rep.from_user
-    name = u.first_name if u else "MGB User"
-    txt = rep.text or rep.caption
-
     dp_bytes = None
     if u and u.photo:
         try:
@@ -452,20 +525,13 @@ async def quote_sticker_cmd(client, message: Message):
             dp_bytes = bio.getvalue()
         except Exception:
             pass
-
-    sticker_bio = await asyncio.to_thread(_build_quote_sticker, name, txt, dp_bytes)
-    await message.reply_sticker(sticker=sticker_bio)
+    st = await asyncio.to_thread(_build_quote_sticker, u.first_name if u else "MGB User", rep.text or rep.caption, dp_bytes)
+    await message.reply_sticker(sticker=st)
 
 # ── 8. AUTO REELS & SHORTS DOWNLOADER (/dl) ───────────────────
 def _sync_ytdlp_download(url: str, out_dir: str) -> str:
     import yt_dlp
-    opts = {
-        "outtmpl": os.path.join(out_dir, "mgb_video.%(ext)s"),
-        "format": "best[ext=mp4]/best",
-        "quiet": True,
-        "noplaylist": True,
-        "max_filesize": 45 * 1024 * 1024,
-    }
+    opts = {"outtmpl": os.path.join(out_dir, "mgb_v.%(ext)s"), "format": "best[ext=mp4]/best", "quiet": True, "noplaylist": True, "max_filesize": 45 * 1024 * 1024}
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
         return ydl.prepare_filename(info)
@@ -473,110 +539,108 @@ def _sync_ytdlp_download(url: str, out_dir: str) -> str:
 @bot.on_message(filters.command(["dl", "reel", "shorts"], prefixes=["/", "!", "."]))
 async def reels_dl_cmd(client, message: Message):
     if len(message.command) < 2:
-        return await message.reply_text("📥 <b>Instagram Reel ya Shorts ka link dein:</b>\n<code>/dl https://...</code>", parse_mode=enums.ParseMode.HTML)
-
-    url = message.command[1]
-    m = await message.reply_text("<blockquote><b>📥 𝐌𝐆𝐁 𝐇𝐃 𝐕𝐢𝐝𝐞𝐨 𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐡𝐨 𝐫𝐚𝐡𝐚 𝐡𝐚𝐢...</b></blockquote>", parse_mode=enums.ParseMode.HTML)
-    tmp_dir = tempfile.mkdtemp(prefix="mgb_dl_")
+        return await message.reply_text("📥 <b>Link dein:</b> <code>/dl https://...</code>", parse_mode=enums.ParseMode.HTML)
+    m = await message.reply_text("<blockquote><b>📥 𝐌𝐆𝐁 𝐇𝐃 𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝 𝐡𝐨 𝐫𝐚𝐡𝐚 𝐡𝐚𝐢...</b></blockquote>", parse_mode=enums.ParseMode.HTML)
+    td = tempfile.mkdtemp(prefix="mgb_dl_")
     try:
-        file_path = await asyncio.to_thread(_sync_ytdlp_download, url, tmp_dir)
-        kb = InlineKeyboardMarkup([
-            [_btn("🚀 𝐔𝐏𝐃𝐀𝐓𝐄𝐒", url="https://t.me/MGB_CODER", style="success")]
-        ])
-        await message.reply_video(
-            video=file_path,
-            caption=f"<blockquote><b>🎬 𝐌𝐆𝐁 𝐇𝐃 𝐑𝐄𝐄𝐋𝐒 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐄𝐑</b></blockquote>\n\n{FOOTER}",
-            reply_markup=kb,
-            parse_mode=enums.ParseMode.HTML,
-        )
+        fp = await asyncio.to_thread(_sync_ytdlp_download, message.command[1], td)
+        await message.reply_video(video=fp, caption=f"<blockquote><b>🎬 𝐌𝐆𝐁 𝐇𝐃 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐄𝐑</b></blockquote>\n\n{FOOTER}", parse_mode=enums.ParseMode.HTML)
         await m.delete()
     except Exception as e:
         await m.edit_text(f"❌ <b>Download Failed:</b> <code>{html.escape(str(e)[:120])}</code>", parse_mode=enums.ParseMode.HTML)
     finally:
+        for f in os.listdir(td):
+            try:
+                os.remove(os.path.join(td, f))
+            except Exception:
+                pass
         try:
-            for f in os.listdir(tmp_dir):
-                os.remove(os.path.join(tmp_dir, f))
-            os.rmdir(tmp_dir)
+            os.rmdir(td)
         except Exception:
             pass
 
-# ── 9. LIVE CRICKET SCORECARD (/score) ────────────────────────
-async def _fetch_live_cricket() -> str:
+# ── 9. LIVE AUTO-REFRESH CRICKET SCORECARD (/score) ───────────
+async def _fetch_live_cricket(live: bool = True) -> str:
+    now = datetime.now(IST).strftime("%I:%M:%S %p")
+    badge = f"🔴 <b>LIVE AUTO-REFRESH (15s)</b> • <code>{now}</code>" if live else f"⚪ <b>PAUSED</b> • <code>{now}</code>"
     try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6)) as session:
-            async with session.get("https://api.cricapi.com/v1/currentMatches?apikey=00000000-0000-0000-0000-000000000000&offset=0") as r:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6)) as s:
+            async with s.get("https://static.cricinfo.com/rss/livescores.xml") as r:
                 if r.status == 200:
-                    data = await r.json()
-                    matches = data.get("data") or []
-                    if matches:
-                        m = matches[0]
-                        return f"🏏 <b>{m.get('name')}</b>\n📊 <b>Status:</b> <code>{m.get('status')}</code>"
+                    xml_txt = await r.text()
+                    titles = re.findall(r"<title>(.*?)</title>", xml_txt)[1:4]
+                    if titles:
+                        body = "\n".join(f"🏏 <code>{html.escape(t)}</code>" for t in titles)
+                        return f"<blockquote><b>🏏 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐂𝐑𝐈𝐂𝐊𝐄𝐓 𝐒𝐂𝐎𝐑𝐄</b></blockquote>\n{badge}\n\n{body}\n\n{FOOTER}"
     except Exception:
         pass
     overs = f"{random.randint(14, 19)}.{random.randint(1, 5)}"
-    runs = random.randint(145, 212)
-    wkts = random.randint(2, 6)
+    runs, wkts = random.randint(148, 215), random.randint(2, 6)
     return (
-        f"🏏 <b>IND vs AUS (Live T20 Series)</b>\n"
-        f"📊 <b>Score:</b> <code>IND {runs}/{wkts} ({overs} Overs)</code>\n"
-        f"🔥 <b>CRR:</b> <code>{round(runs/float(overs), 2)}</code>"
+        f"<blockquote><b>🏏 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐂𝐑𝐈𝐂𝐊𝐄𝐓 𝐒𝐂𝐎𝐑𝐄</b></blockquote>\n{badge}\n\n"
+        f"🏏 <b>IND vs AUS (T20 Live)</b>\n📊 <b>Score:</b> <code>IND {runs}/{wkts} ({overs} Ov)</code>\n🔥 <b>CRR:</b> <code>{round(runs/float(overs), 2)}</code>\n\n{FOOTER}"
     )
 
-def _score_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
-        [_btn("🔄 𝐑𝐄𝐅𝐑𝐄𝐒𝐇", callback_data="mgb_cric_refresh", style="success")]
-    ])
+def _cric_rows(live: bool = True) -> list:
+    if live:
+        return [[
+            _cbtn("🔄 𝐑𝐄𝐅𝐑𝐄𝐒𝐇", style="success", callback_data="mgb_cric_ref"),
+            _cbtn("⏹ 𝐒𝐓𝐎𝐏 𝐋𝐈𝐕𝐄", style="danger", callback_data="mgb_cric_stop"),
+        ]]
+    return [[_cbtn("🔄 𝐒𝐓𝐀𝐑𝐓 𝐋𝐈𝐕𝐄", style="success", callback_data="mgb_cric_ref")]]
 
 @bot.on_message(filters.command(["score", "cricket"], prefixes=["/", "!", "."]))
 async def cricket_cmd(client, message: Message):
-    info = await _fetch_live_cricket()
-    await message.reply_text(
-        f"<blockquote><b>🏏 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐂𝐑𝐈𝐂𝐊𝐄𝐓 𝐒𝐂𝐎𝐑𝐄</b></blockquote>\n\n"
-        f"{info}\n\n{FOOTER}",
-        reply_markup=_score_kb(),
-        parse_mode=enums.ParseMode.HTML,
-    )
+    chat_id = message.chat.id
+    if chat_id in LIVE_CRIC_TASKS:
+        LIVE_CRIC_TASKS[chat_id].cancel()
 
-@bot.on_callback_query(filters.regex(r"^mgb_cric_refresh$"))
+    text = await _fetch_live_cricket(live=True)
+    msg_id = await send_colored_msg(client, chat_id, text, _cric_rows(True), reply_to=message.id)
+
+    async def _auto_cric():
+        try:
+            for _ in range(20):
+                await asyncio.sleep(15)
+                await edit_colored_msg(client, chat_id, msg_id, await _fetch_live_cricket(live=True), _cric_rows(True))
+            await edit_colored_msg(client, chat_id, msg_id, await _fetch_live_cricket(live=False), _cric_rows(False))
+        except asyncio.CancelledError:
+            pass
+
+    LIVE_CRIC_TASKS[chat_id] = asyncio.create_task(_auto_cric())
+
+@bot.on_callback_query(filters.regex(r"^mgb_cric_(ref|stop)$"))
 async def cricket_cb(client, query: CallbackQuery):
-    await query.answer("🔄 Score Updated!", show_alert=False)
-    info = await _fetch_live_cricket()
-    try:
-        await query.message.edit_text(
-            f"<blockquote><b>🏏 𝐌𝐆𝐁 𝐋𝐈𝐕𝐄 𝐂𝐑𝐈𝐂𝐊𝐄𝐓 𝐒𝐂𝐎𝐑𝐄</b></blockquote>\n\n"
-            f"{info}\n\n{FOOTER}",
-            reply_markup=_score_kb(),
-            parse_mode=enums.ParseMode.HTML,
-        )
-    except Exception:
-        pass
+    act = query.matches[0].group(1)
+    chat_id = query.message.chat.id
+    if act == "stop":
+        if chat_id in LIVE_CRIC_TASKS:
+            LIVE_CRIC_TASKS.pop(chat_id).cancel()
+        await query.answer("⏹ Live Auto-Refresh Stopped!", show_alert=False)
+        return await edit_colored_msg(client, chat_id, query.message.id, await _fetch_live_cricket(live=False), _cric_rows(False))
+    await query.answer("🔄 Live Score Updated!", show_alert=False)
+    await edit_colored_msg(client, chat_id, query.message.id, await _fetch_live_cricket(live=True), _cric_rows(True))
 
 # ── 10. SMART AUTO-CLEAN MODE (/autoclean) ────────────────────
-def _autoclean_kb(enabled: bool) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
-        [
-            _btn("✅ 𝐄𝐍𝐀𝐁𝐋𝐄", callback_data="mgb_ac_on", style="success"),
-            _btn("❌ 𝐃𝐈𝐒𝐀𝐁𝐋𝐄", callback_data="mgb_ac_off", style="danger"),
-        ]
-    ])
+def _ac_rows() -> list:
+    return [[
+        _cbtn("✅ 𝐄𝐍𝐀𝐁𝐋𝐄", style="success", callback_data="mgb_ac_on"),
+        _cbtn("❌ 𝐃𝐈𝐒𝐀𝐁𝐋𝐄", style="danger", callback_data="mgb_ac_off"),
+    ]]
 
 @bot.on_message(filters.command(["autoclean", "cleanmode"], prefixes=["/", "!", "."]))
 async def autoclean_cmd(client, message: Message):
     chat_id = message.chat.id
     if chat_id in AUTOCLEAN_CHATS:
         AUTOCLEAN_CHATS.discard(chat_id)
-        enabled = False
+        st = "DISABLED ❌"
     else:
         AUTOCLEAN_CHATS.add(chat_id)
-        enabled = True
-
-    st = "ENABLED ✅" if enabled else "DISABLED ❌"
-    await message.reply_text(
-        f"<blockquote><b>🧹 𝐌𝐆𝐁 𝐒𝐌𝐀𝐑𝐓 𝐀𝐔𝐓𝐎-𝐂𝐋𝐄𝐀𝐍</b></blockquote>\n\n"
-        f"⚙️ <b>Status:</b> <code>{st}</code>\n"
-        f"✨ <b>Bot commands & join/leave service messages auto-clean honge.</b>\n\n{FOOTER}",
-        reply_markup=_autoclean_kb(enabled),
-        parse_mode=enums.ParseMode.HTML,
+        st = "ENABLED ✅"
+    await send_colored_msg(
+        client, chat_id,
+        f"<blockquote><b>🧹 𝐌𝐆𝐁 𝐒𝐌𝐀𝐑𝐓 𝐀𝐔𝐓𝐎-𝐂𝐋𝐄𝐀𝐍</b></blockquote>\n\n⚙️ <b>Status:</b> <code>{st}</code>\n\n{FOOTER}",
+        _ac_rows(), reply_to=message.id,
     )
 
 @bot.on_callback_query(filters.regex(r"^mgb_ac_(on|off)$"))
@@ -589,13 +653,11 @@ async def autoclean_cb(client, query: CallbackQuery):
     else:
         AUTOCLEAN_CHATS.discard(chat_id)
         st = "DISABLED ❌"
-
     await query.answer(f"🧹 Auto-Clean {st}", show_alert=False)
-    await query.message.edit_text(
-        f"<blockquote><b>🧹 𝐌𝐆𝐁 𝐒𝐌𝐀𝐑𝐓 𝐀𝐔𝐓𝐎-𝐂𝐋𝐄𝐀𝐍</b></blockquote>\n\n"
-        f"⚙️ <b>Status:</b> <code>{st}</code>\n\n{FOOTER}",
-        reply_markup=_autoclean_kb(mode == "on"),
-        parse_mode=enums.ParseMode.HTML,
+    await edit_colored_msg(
+        client, chat_id, query.message.id,
+        f"<blockquote><b>🧹 𝐌𝐆𝐁 𝐒𝐌𝐀𝐑𝐓 𝐀𝐔𝐓𝐎-𝐂𝐋𝐄𝐀𝐍</b></blockquote>\n\n⚙️ <b>Status:</b> <code>{st}</code>\n\n{FOOTER}",
+        _ac_rows(),
     )
 
 @bot.on_message(filters.group & (filters.service | filters.regex(r"^[/!\.]")), group=10)
@@ -608,10 +670,11 @@ async def autoclean_watcher(client, message: Message):
         except Exception:
             pass
     else:
-        async def _delayed_del(msg: Message):
+        async def _del(msg: Message):
             await asyncio.sleep(25)
             try:
                 await msg.delete()
             except Exception:
                 pass
-        asyncio.create_task(_delayed_del(message))
+        asyncio.create_task(_del(message))
+    
