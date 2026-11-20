@@ -1001,3 +1001,4 @@ async def autoclean_watcher(client, message: Message):
             except Exception:
                 pass
         asyncio.create_task(_del(message))
+    
