@@ -444,6 +444,49 @@ async def entry_bgm_cb(client, query: CallbackQuery):
             [[_cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="primary", url=f"https://t.me/{OWNER_UNAME}")]],
         )
 
+@bot.on_message(filters.group & filters.new_chat_members, group=8)
+async def group_join_bgm_handler(client, message: Message):
+    if message.chat.id in WELCOME_BGM_OFF:
+        return
+    for member in message.new_chat_members:
+        if member.is_bot:
+            continue
+        pref = USER_BGM_PREF.get(member.id, "bgmi")
+        label, mp3 = await _get_real_bgm_mp3(pref)
+        try:
+            from ArtistMusic.plugins.mgb_viral_cards import _get_user_dp, _get_template_bg, _make_single_card, send_rich_card
+            dp = await _get_user_dp(client, member.id)
+            tpl = await _get_template_bg()
+            card = _make_single_card(dp, "WELCOME TO GROUP", member.first_name, f"Group: {message.chat.title or 'MGB VIP'}", f"Entry BGM: {label}", template_bg=tpl)
+            await send_rich_card(
+                client, message.chat.id, card,
+                f"<blockquote><b>👑 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 {html.escape(message.chat.title or 'GROUP')}</b></blockquote>\n\n"
+                f"✨ <b>New Member:</b> <b>{html.escape(member.first_name)}</b>\n\n{FOOTER}",
+            )
+        except Exception:
+            pass
+        if mp3:
+            await send_colored_audio(
+                client, message.chat.id, mp3, label, f"@{OWNER_UNAME}", 20,
+                f"<blockquote><b>🎮 𝐀𝐔𝐓𝐎 𝐁𝐆𝐌𝐈 𝐄𝐍𝐓𝐑𝐘</b></blockquote>\n\n"
+                f"🔥 <b>{html.escape(member.first_name)}</b> ne group join kiya!\n\n{FOOTER}",
+                [[_cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="primary", url=f"https://t.me/{OWNER_UNAME}")]],
+            )
+
+@bot.on_message(filters.group & filters.left_chat_member, group=8)
+async def group_leave_bgm_handler(client, message: Message):
+    if message.chat.id in WELCOME_BGM_OFF or not message.left_chat_member or message.left_chat_member.is_bot:
+        return
+    member = message.left_chat_member
+    label, mp3 = await _get_real_bgm_mp3(USER_BGM_PREF.get(member.id, "kgf"))
+    if mp3:
+        await send_colored_audio(
+            client, message.chat.id, mp3, f"Bye • {label}", f"@{OWNER_UNAME}", 20,
+            f"<blockquote><b>👋 𝐌𝐄𝐌𝐁𝐄𝐑 𝐋𝐄𝐅𝐓 𝐁𝐆𝐌</b></blockquote>\n\n"
+            f"💔 <b>{html.escape(member.first_name)}</b> group chhod kar chala gaya!\n\n{FOOTER}",
+            [[_cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="danger", url=f"https://t.me/{OWNER_UNAME}")]],
+        )
+
 @bot.on_message(
     filters.group & (filters.video_chat_started | filters.video_chat_ended | filters.video_chat_members_invited),
     group=8,
@@ -467,7 +510,7 @@ async def vc_events_bgm_handler(client, message: Message):
             client, message.chat.id, mp3, label, f"@{OWNER_UNAME}", 20,
             f"<blockquote><b>{title_txt}</b></blockquote>\n\n🎵 <b>Auto VC BGM:</b> <code>{html.escape(label)}</code>\n\n{FOOTER}",
             [[_cbtn("👑 𝐎𝐖𝐍𝐄𝐑", style="success", url=f"https://t.me/{OWNER_UNAME}")]],
-        )
+    )
 
 # ── 4. 1-COMMAND AUTO REAL SFX (/drum, /clap, /bruh, /laugh, /sfx)
 SFX_URLS = {
@@ -887,10 +930,10 @@ async def _start_india_score_loop(client, chat_id: int, mid: int):
     if chat_id in LIVE_SCORE_TASKS:
         LIVE_SCORE_TASKS.pop(chat_id).cancel()
 
-async def _loop():
+    async def _loop():
         last_line = ""
         try:
-            for _ in range(900):  # ~30 mins active live tracking
+            for _ in range(900):
                 await asyncio.sleep(2)
                 fresh_line = await _fetch_india_live_score()
                 rw = _extract_india_runs_wkts(fresh_line)
@@ -905,13 +948,15 @@ async def _loop():
                         elif runs - prev["runs"] == 4:
                             await _auto_fire_india_event(client, chat_id, "4", fresh_line, ref_msg_id=mid)
                     LIVE_CRIC_LAST_STATE[chat_id] = {"runs": runs, "wkts": wkts}
-               if fresh_line != last_line:
+
+                if fresh_line != last_line:
                     last_line = fresh_line
                     await edit_colored_msg(client, chat_id, mid, await _build_india_score_text(chat_id, fresh_line), _score_live_rows(True))
         except asyncio.CancelledError:
             pass
         finally:
             LIVE_SCORE_TASKS.pop(chat_id, None)
+
     LIVE_SCORE_TASKS[chat_id] = asyncio.create_task(_loop())
 
 @bot.on_message(filters.command(["score", "cricket", "autospeaker"], prefixes=["/", "!", "."]))
@@ -999,4 +1044,4 @@ async def autoclean_watcher(client, message: Message):
             except Exception:
                 pass
         asyncio.create_task(_del(message))
-    
+        
