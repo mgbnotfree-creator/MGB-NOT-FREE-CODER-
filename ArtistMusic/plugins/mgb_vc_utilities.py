@@ -913,7 +913,6 @@ async def _loop():
             pass
         finally:
             LIVE_SCORE_TASKS.pop(chat_id, None)
-
     LIVE_SCORE_TASKS[chat_id] = asyncio.create_task(_loop())
 
 @bot.on_message(filters.command(["score", "cricket", "autospeaker"], prefixes=["/", "!", "."]))
