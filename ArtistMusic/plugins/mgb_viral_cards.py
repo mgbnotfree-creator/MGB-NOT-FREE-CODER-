@@ -14,7 +14,7 @@ import unicodedata
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 import aiohttp
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 from pyrogram import filters, enums
 from pyrogram.types import Message, CallbackQuery
 
@@ -59,7 +59,7 @@ DARE_LIST = [
     "Apni gallery ki 5th photo bina soche group mein bhejo!",
 ]
 
-# ── 🔘 HTML COLORED BUTTON ENGINE (sendRichMessage + Fallback)
+# ── 🔘 HTML PILL BUTTON ENGINE (sendRichMessage + Fallback) ───
 def _cbtn(text: str, style: str = "primary", callback_data: str = None, url: str = None) -> dict:
     btn = {"text": text, "style": style}
     if url:
@@ -68,7 +68,7 @@ def _cbtn(text: str, style: str = "primary", callback_data: str = None, url: str
         btn["callback_data"] = callback_data
     return btn
 
-def _rows_to_rich_html(rows: list) -> str:
+def _rows_to_rich_html(rows: list, cb_attr: str = "callback_data") -> str:
     if not rows:
         return ""
     out = []
@@ -82,7 +82,7 @@ def _rows_to_rich_html(rows: list) -> str:
                 btns_html.append(f'<tg-button type="url" style="{st}" url="{u}">{txt}</tg-button>')
             elif b.get("callback_data"):
                 cd = html.escape(str(b["callback_data"]), quote=True)
-                btns_html.append(f'<tg-button type="callback" style="{st}" data="{cd}">{txt}</tg-button>')
+                btns_html.append(f'<tg-button type="callback" style="{st}" {cb_attr}="{cd}">{txt}</tg-button>')
         if btns_html:
             out.append(f'<tg-button-row align="center">{"".join(btns_html)}</tg-button-row>')
     return "".join(out)
@@ -116,15 +116,16 @@ async def _bot_api_req(client, method: str, data: dict):
     return None
 
 async def send_colored_msg(client, chat_id: int, text: str, rows: list, reply_to: int = None):
-    rich_btns = _rows_to_rich_html(rows)
-    if rich_btns:
-        rich_html = text.replace("\n", "<br>") + "<br><br>" + rich_btns
-        rich_payload = {"chat_id": chat_id, "rich_message": {"html": rich_html}}
-        if reply_to:
-            rich_payload["reply_to_message_id"] = reply_to
-        res = await _bot_api_req(client, "sendRichMessage", rich_payload)
-        if res:
-            return res.get("message_id")
+    if rows:
+        for attr in ("callback_data", "data"):
+            rich_btns = _rows_to_rich_html(rows, cb_attr=attr)
+            rich_html = text.replace("\n", "<br>") + "<br><br>" + rich_btns
+            rich_payload = {"chat_id": chat_id, "rich_message": {"html": rich_html}}
+            if reply_to:
+                rich_payload["reply_to_message_id"] = reply_to
+            res = await _bot_api_req(client, "sendRichMessage", rich_payload)
+            if res:
+                return res.get("message_id")
 
     payload = {
         "chat_id": chat_id,
@@ -142,15 +143,16 @@ async def send_colored_msg(client, chat_id: int, text: str, rows: list, reply_to
 
 async def edit_colored_msg(client, chat_id: int, msg_id: int, text: str, rows: list = None):
     if rows is not None:
-        rich_btns = _rows_to_rich_html(rows)
-        rich_html = text.replace("\n", "<br>") + (("<br><br>" + rich_btns) if rich_btns else "")
-        res = await _bot_api_req(
-            client,
-            "editRichMessage",
-            {"chat_id": chat_id, "message_id": msg_id, "rich_message": {"html": rich_html}},
-        )
-        if res:
-            return res
+        for attr in ("callback_data", "data"):
+            rich_btns = _rows_to_rich_html(rows, cb_attr=attr)
+            rich_html = text.replace("\n", "<br>") + (("<br><br>" + rich_btns) if rich_btns else "")
+            res = await _bot_api_req(
+                client,
+                "editRichMessage",
+                {"chat_id": chat_id, "message_id": msg_id, "rich_message": {"html": rich_html}},
+            )
+            if res:
+                return res
 
     payload = {
         "chat_id": chat_id,
@@ -165,26 +167,29 @@ async def edit_colored_msg(client, chat_id: int, msg_id: int, text: str, rows: l
 async def send_rich_card(client, chat_id: int, photo_bio: io.BytesIO, caption: str, json_rows: list = None):
     token = getattr(client, "bot_token", None)
     if token and photo_bio:
-        try:
-            clean_cap = caption.replace("\n", "<br>")
-            btns_html = _rows_to_rich_html(json_rows) if json_rows else _brand_html_btns()
-            full_html = f'<img src="tg://photo?id=card_img"/><br>{clean_cap}<br><br>{btns_html}'
-            payload = {
-                "html": full_html,
-                "media": [{"id": "card_img", "media": {"type": "photo", "media": "attach://card_img"}}],
-            }
-            form = aiohttp.FormData()
-            form.add_field("chat_id", str(chat_id))
-            form.add_field("rich_message", json.dumps(payload, ensure_ascii=False))
-            photo_bio.seek(0)
-            form.add_field("card_img", photo_bio.read(), filename="mgb_banner.jpg", content_type="image/jpeg")
-            async with aiohttp.ClientSession() as s:
-                async with s.post(f"https://api.telegram.org/bot{token}/sendRichMessage", data=form) as r:
-                    res = await r.json()
-                    if res.get("ok"):
-                        return res.get("result", {}).get("message_id")
-        except Exception:
-            pass
+        for attr in ("callback_data", "data"):
+            try:
+                clean_cap = caption.replace("\n", "<br>")
+                btns_html = _rows_to_rich_html(json_rows, cb_attr=attr) if json_rows else _brand_html_btns()
+                full_html = f'<img src="tg://photo?id=card_img"/><br>{clean_cap}<br><br>{btns_html}'
+                payload = {
+                    "html": full_html,
+                    "media": [{"id": "card_img", "media": {"type": "photo", "media": "attach://card_img"}}],
+                }
+                form = aiohttp.FormData()
+                form.add_field("chat_id", str(chat_id))
+                form.add_field("rich_message", json.dumps(payload, ensure_ascii=False))
+                photo_bio.seek(0)
+                form.add_field("card_img", photo_bio.read(), filename="mgb_banner.jpg", content_type="image/jpeg")
+                async with aiohttp.ClientSession() as s:
+                    async with s.post(f"https://api.telegram.org/bot{token}/sendRichMessage", data=form) as r:
+                        res = await r.json()
+                        if res.get("ok"):
+                            return res.get("result", {}).get("message_id")
+            except Exception:
+                pass
+            if not json_rows:
+                break
 
         try:
             form = aiohttp.FormData()
@@ -206,7 +211,7 @@ async def send_rich_card(client, chat_id: int, photo_bio: io.BytesIO, caption: s
     m = await client.send_photo(chat_id, photo_bio, caption=caption, parse_mode=enums.ParseMode.HTML)
     return m.id
 
-# ── 🎨 ROYAL GOLD & PURPLE AI-TEMPLATE BANNER ENGINE ──────────
+# ── 🎨 ULTRA-CRISP 4K STYLISH BOLD BANNER ENGINE (NO BLUR) ───
 FANCY_MAP = str.maketrans({
     "ᴀ": "A", "ʙ": "B", "ᴄ": "C", "ᴅ": "D", "ᴇ": "E", "ꜰ": "F", "ғ": "F",
     "ɢ": "G", "ʜ": "H", "ɪ": "I", "ᴊ": "J", "ᴋ": "K", "ʟ": "L", "ᴍ": "M",
@@ -216,12 +221,16 @@ FANCY_MAP = str.maketrans({
     "Δ": "A", "Σ": "E", "Ω": "O", "β": "B", "α": "A",
 })
 
-def _clean_pil_text(text: str, limit: int = 26) -> str:
+def _clean_pil_text(text: str, limit: int = 34, upper: bool = True) -> str:
     s = str(text or "VIP MEMBER").translate(FANCY_MAP)
     s = unicodedata.normalize("NFKC", s)
     s = "".join(ch for ch in s if 32 <= ord(ch) <= 126 and ch not in "[](){}")
     s = " ".join(s.split()).strip()
-    return (s.upper() if len(s) <= 22 else s)[:limit] or "VIP MEMBER"
+    if upper:
+        s = s.upper()
+    if len(s) > limit:
+        s = s[: limit - 2].rstrip() + ".."
+    return s or "VIP MEMBER"
 
 async def _get_template_bg():
     global _CACHED_TEMPLATE
@@ -263,89 +272,139 @@ async def _get_user_dp(client, user_id: int) -> Image.Image:
             return Image.open(bio).convert("RGBA")
     except Exception:
         pass
-    img = Image.new("RGBA", (360, 360), (20, 12, 42, 255))
-    ImageDraw.Draw(img).ellipse((25, 25, 335, 335), fill=(115, 45, 220, 255))
+    img = Image.new("RGBA", (380, 380), (20, 12, 42, 255))
+    ImageDraw.Draw(img).ellipse((25, 25, 355, 355), fill=(115, 45, 220, 255))
     return img
 
-def _circle_dp(dp: Image.Image, size: int = 334) -> Image.Image:
-    dp = dp.resize((size, size), Image.LANCZOS)
+def _circle_dp(dp: Image.Image, size: int = 374) -> Image.Image:
+    dp = ImageOps.fit(dp.convert("RGBA"), (size, size), method=Image.LANCZOS, centering=(0.5, 0.35))
     mask = Image.new("L", (size, size), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
     out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     out.paste(dp, (0, 0), mask)
     return out
 
-def _load_italic_font(size: int):
-    for p in (
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-BoldItalic.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    ):
+def _detect_ring_circle(tpl: Image.Image):
+    rgb = tpl.convert("RGB")
+    px = rgb.load()
+    _, h = rgb.size
+    cx, cy = 286, 334
+
+    def _bright(x, y):
+        r, g, b = px[x, y]
+        return (r + g + b) / 3
+
+    lx, rx = cx, cx
+    while lx > 50 and _bright(lx, cy) < 110:
+        lx -= 1
+    while rx < 540 and _bright(rx, cy) < 110:
+        rx += 1
+    cx = (lx + rx) // 2
+
+    ty, by = cy, cy
+    while ty > 80 and _bright(cx, ty) < 110:
+        ty -= 1
+    while by < h - 80 and _bright(cx, by) < 110:
+        by += 1
+    cy = (ty + by) // 2
+
+    diam = max(rx - lx, by - ty) + 10
+    if not (340 <= diam <= 420):
+        return 286, 334, 376
+    return cx, cy, diam
+
+def _load_bold_font(size: int, italic: bool = False):
+    paths = (
+        [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-BoldItalic.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        ]
+        if italic
+        else [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        ]
+    )
+    for p in paths:
         try:
             return ImageFont.truetype(p, size)
         except Exception:
             pass
     return ImageFont.load_default()
 
-def _fit_font(text: str, max_width: int, start_size: int, min_size: int = 20):
+def _fit_font(text: str, max_width: int, start_size: int, min_size: int = 20, italic: bool = False):
     dummy = ImageDraw.Draw(Image.new("RGBA", (10, 10)))
     for sz in range(start_size, min_size - 1, -2):
-        f = _load_italic_font(sz)
+        f = _load_bold_font(sz, italic=italic)
         box = dummy.textbbox((0, 0), text, font=f)
         if (box[2] - box[0]) <= max_width:
             return f
-    return _load_italic_font(min_size)
+    return _load_bold_font(min_size, italic=italic)
 
-def _draw_royal_glow(img: Image.Image, xy: tuple, text: str, font, fill=(255, 255, 255), glow=(255, 195, 45), anchor="lm", depth: int = 4) -> Image.Image:
-    g_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    gd = ImageDraw.Draw(g_layer)
+def _draw_crisp_stylish_text(
+    img: Image.Image,
+    xy: tuple,
+    text: str,
+    font,
+    fill=(255, 255, 255),
+    accent=(255, 210, 50),
+    anchor="lm",
+    stroke_w: int = 3,
+) -> Image.Image:
     x, y = xy
-    gd.text((x, y), text, font=font, fill=(*glow, 235), anchor=anchor, stroke_width=4, stroke_fill=(*glow, 190))
-    img = Image.alpha_composite(img, g_layer.filter(ImageFilter.GaussianBlur(8)))
+    # 1. Very light tight ambient backlight (NO blur over letters)
+    glow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow_layer)
+    gd.text((x, y), text, font=font, fill=(*accent, 95), anchor=anchor, stroke_width=2, stroke_fill=(*accent, 80))
+    img = Image.alpha_composite(img, glow_layer.filter(ImageFilter.GaussianBlur(3)))
 
+    # 2. Sharp solid 3D dark drop-shadow for crystal-clear pop
     d = ImageDraw.Draw(img)
-    for st in range(depth, 0, -1):
-        d.text((x + st, y + st), text, font=font, fill=(5, 3, 14, 235), anchor=anchor)
-    d.text((x, y), text, font=font, fill=fill, anchor=anchor, stroke_width=1, stroke_fill=(*glow, 160))
+    d.text((x + 3, y + 4), text, font=font, fill=(4, 2, 12, 245), anchor=anchor, stroke_width=stroke_w, stroke_fill=(4, 2, 12, 245))
+
+    # 3. Ultra-sharp dark outline + pure bright solid fill (100% crisp, zero haze)
+    d.text((x, y), text, font=font, fill=(*fill, 255), anchor=anchor, stroke_width=stroke_w, stroke_fill=(12, 6, 26, 255))
     return img
 
-def _make_single_card(dp: Image.Image, badge: str, title: str, line1: str, line2: str, accent=(255, 195, 45), template_bg=None) -> io.BytesIO:
+def _make_single_card(dp: Image.Image, badge: str, title: str, line1: str, line2: str, accent=(255, 215, 50), template_bg=None) -> io.BytesIO:
     W, H = 1280, 720
     if template_bg is not None:
         bg = template_bg.copy()
-        c_dp = _circle_dp(dp, 334)
-        bg.paste(c_dp, (105, 153), c_dp)
-        d = ImageDraw.Draw(bg)
-        d.ellipse((104, 152, 440, 488), outline=(255, 220, 110, 230), width=4)
+        cx, cy, diam = _detect_ring_circle(bg)
+        c_dp = _circle_dp(dp, diam)
+        bg.paste(c_dp, (cx - diam // 2, cy - diam // 2), c_dp)
     else:
         bg = Image.new("RGBA", (W, H), (8, 5, 18, 255))
         d = ImageDraw.Draw(bg)
         d.rounded_rectangle((44, 44, W - 44, H - 44), radius=40, fill=(14, 10, 28, 232), outline=(255, 205, 65, 255), width=5)
-        c_dp = _circle_dp(dp, 334)
-        bg.paste(c_dp, (105, 153), c_dp)
-        d.ellipse((100, 148, 444, 492), outline=(255, 210, 70, 255), width=6)
+        c_dp = _circle_dp(dp, 360)
+        bg.paste(c_dp, (106, 154), c_dp)
+        d.ellipse((102, 150, 470, 518), outline=(255, 210, 70, 255), width=6)
 
-    t_badge = _clean_pil_text(badge, 24)
-    t_name = _clean_pil_text(title, 22)
-    t_l1 = _clean_pil_text(line1, 30)
-    t_l2 = _clean_pil_text(line2, 30)
+    t_badge = _clean_pil_text(badge, 26, upper=True)
+    t_name = _clean_pil_text(title, 22, upper=True)
+    t_l1 = _clean_pil_text(line1, 34, upper=False)
+    t_l2 = _clean_pil_text(line2, 32, upper=True)
     t_foot = f"POWERED BY : @{OWNER_UNAME}"
 
-    f_badge = _fit_font(t_badge, 460, 40, 24)
-    f_name = _fit_font(t_name, 530, 54, 28)
-    f_l1 = _fit_font(t_l1, 560, 38, 22)
-    f_l2 = _fit_font(t_l2, 560, 36, 22)
-    f_foot = _fit_font(t_foot, 560, 30, 20)
+    f_badge = _fit_font(t_badge, 460, 40, 24, italic=True)
+    f_name = _fit_font(t_name, 540, 58, 30, italic=True)
+    f_l1 = _fit_font(t_l1, 560, 38, 22, italic=False)
+    f_l2 = _fit_font(t_l2, 560, 36, 22, italic=True)
+    f_foot = _fit_font(t_foot, 540, 30, 20, italic=False)
 
-    bg = _draw_royal_glow(bg, (802, 138), t_badge, f_badge, (255, 245, 160), (255, 175, 20), anchor="mm", depth=4)
-    bg = _draw_royal_glow(bg, (525, 232), t_name, f_name, (255, 255, 255), (190, 80, 255), anchor="lm", depth=5)
-    bg = _draw_royal_glow(bg, (525, 332), t_l1, f_l1, (255, 225, 65), (255, 155, 20), anchor="lm", depth=4)
-    bg = _draw_royal_glow(bg, (525, 426), t_l2, f_l2, (115, 238, 255), (30, 165, 255), anchor="lm", depth=4)
-    bg = _draw_royal_glow(bg, (802, 540), t_foot, f_foot, (255, 235, 110), (255, 170, 30), anchor="mm", depth=3)
+    # Crystal-clear high-contrast bold colors
+    bg = _draw_crisp_stylish_text(bg, (802, 138), t_badge, f_badge, fill=(255, 224, 66), accent=(255, 185, 20), anchor="mm", stroke_w=3)
+    bg = _draw_crisp_stylish_text(bg, (525, 234), t_name, f_name, fill=(255, 255, 255), accent=(210, 120, 255), anchor="lm", stroke_w=4)
+    bg = _draw_crisp_stylish_text(bg, (525, 332), t_l1, f_l1, fill=(255, 215, 45), accent=(255, 165, 0), anchor="lm", stroke_w=3)
+    bg = _draw_crisp_stylish_text(bg, (525, 426), t_l2, f_l2, fill=(56, 242, 255), accent=(0, 195, 255), anchor="lm", stroke_w=3)
+    bg = _draw_crisp_stylish_text(bg, (802, 540), t_foot, f_foot, fill=(255, 235, 95), accent=(255, 190, 30), anchor="mm", stroke_w=3)
 
     out = io.BytesIO()
     out.name = "mgb_banner.jpg"
-    bg.convert("RGB").save(out, "JPEG", quality=96)
+    bg.convert("RGB").save(out, "JPEG", quality=98, subsampling=0)
     out.seek(0)
     return out
 
@@ -359,20 +418,20 @@ def _make_dual_card(dp1: Image.Image, dp2: Image.Image, name1: str, name2: str, 
     d.ellipse((136, 156, 384, 404), outline=(255, 225, 95), width=6)
     d.ellipse((896, 156, 1144, 404), outline=(255, 80, 165), width=6)
 
-    f_h = _fit_font("MARRIAGE CERTIFICATE", 650, 48, 28)
-    f_w = _fit_font("ROYAL WEDS", 320, 44, 26)
+    f_h = _fit_font("MARRIAGE CERTIFICATE", 650, 48, 28, italic=True)
+    f_w = _fit_font("ROYAL WEDS", 320, 44, 26, italic=True)
     couple = f"{_clean_pil_text(name1, 14)}  &  {_clean_pil_text(name2, 14)}"
-    f_n = _fit_font(couple, 1050, 48, 26)
-    f_s = _fit_font(f"POWERED BY : @{OWNER_UNAME}", 650, 30, 20)
+    f_n = _fit_font(couple, 1050, 50, 28, italic=True)
+    f_s = _fit_font(f"POWERED BY : @{OWNER_UNAME}", 650, 30, 20, italic=False)
 
-    bg = _draw_royal_glow(bg, (640, 112), "MARRIAGE CERTIFICATE", f_h, (255, 235, 110), (255, 155, 25), anchor="mm", depth=4)
-    bg = _draw_royal_glow(bg, (640, 280), "ROYAL WEDS", f_w, (255, 120, 185), (255, 50, 120), anchor="mm", depth=4)
-    bg = _draw_royal_glow(bg, (640, 468), couple, f_n, (255, 255, 255), (185, 75, 255), anchor="mm", depth=5)
-    bg = _draw_royal_glow(bg, (640, 560), f"POWERED BY : @{OWNER_UNAME}", f_s, (255, 225, 95), (255, 160, 20), anchor="mm", depth=3)
+    bg = _draw_crisp_stylish_text(bg, (640, 112), "MARRIAGE CERTIFICATE", f_h, fill=(255, 225, 70), accent=(255, 165, 25), anchor="mm", stroke_w=3)
+    bg = _draw_crisp_stylish_text(bg, (640, 280), "ROYAL WEDS", f_w, fill=(255, 115, 190), accent=(255, 50, 130), anchor="mm", stroke_w=3)
+    bg = _draw_crisp_stylish_text(bg, (640, 468), couple, f_n, fill=(255, 255, 255), accent=(190, 95, 255), anchor="mm", stroke_w=4)
+    bg = _draw_crisp_stylish_text(bg, (640, 560), f"POWERED BY : @{OWNER_UNAME}", f_s, fill=(255, 230, 90), accent=(255, 175, 20), anchor="mm", stroke_w=3)
 
     out = io.BytesIO()
     out.name = "marriage_banner.jpg"
-    bg.convert("RGB").save(out, "JPEG", quality=96)
+    bg.convert("RGB").save(out, "JPEG", quality=98, subsampling=0)
     out.seek(0)
     return out
 # ── 1. SMART AFK BANNER (/afk) & AUTO RANK-UP WATCHER ─────────
@@ -561,7 +620,7 @@ async def news_wanted_cmd(client, message: Message):
 
     if cmd == "news":
         headline = message.text.split(None, 1)[1] if len(message.command) > 1 else "Group mein bina gaana suney sote hue pakde gaye!"
-        card = _make_single_card(dp, "BREAKING NEWS 24x7", target.first_name, headline[:30], "LIVE REPORT : MGB TV", template_bg=tpl)
+        card = _make_single_card(dp, "BREAKING NEWS 24x7", target.first_name, headline[:34], "LIVE REPORT : MGB TV", template_bg=tpl)
         cap = (
             f"<blockquote><b>📺 𝐌𝐆𝐁 𝐁𝐑𝐄𝐀𝐊𝐈𝐍𝐆 𝐍𝐄𝐖𝐒</b></blockquote>\n\n"
             f"👤 <b>Target:</b> <b>{html.escape(target.first_name)}</b>\n"
@@ -783,3 +842,4 @@ async def rps_cb(client, query: CallbackQuery):
         f"✨ <b>Result:</b> <b>{res}</b>\n\n{FOOTER}",
         [],
     )
+    
