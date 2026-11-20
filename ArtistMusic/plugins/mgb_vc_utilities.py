@@ -906,7 +906,7 @@ async def _loop():
                             await _auto_fire_india_event(client, chat_id, "4", fresh_line, ref_msg_id=mid)
                     LIVE_CRIC_LAST_STATE[chat_id] = {"runs": runs, "wkts": wkts}
 
-                if fresh_line != last_line:
+               if fresh_line != last_line:
                     last_line = fresh_line
                     await edit_colored_msg(client, chat_id, mid, await _build_india_score_text(chat_id, fresh_line), _score_live_rows(True))
         except asyncio.CancelledError:
