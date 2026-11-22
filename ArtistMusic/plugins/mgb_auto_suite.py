@@ -630,7 +630,6 @@ async def daily_vibes_cmd(client, message: Message):
         f"🖼 <b>Preview:</b> <code>/testgm</code> | <code>/testgn</code>\n\n{FOOTER}",
         reply_to=message.id,
     )
-
 # ── 5. INSTANT CARD PREVIEW (/testbday, /testanni, /testbadge, /testgm, /testgn)
 @bot.on_message(filters.command(["testbday", "testanni", "testbadge", "testgm", "testgn"], prefixes=["/", "!", "."]))
 async def test_custom_cards_cmd(client, message: Message):
@@ -795,7 +794,7 @@ async def _daily_auto_scheduler():
                         except Exception:
                             pass
 
-for cid_str, users in list(DB["birthdays"].items()):
+                for cid_str, users in list(DB["birthdays"].items()):
                     for uid_str, info in users.items():
                         if info.get("date") == today_dm:
                             flag = f"{today_ymd}:bday:{cid_str}:{uid_str}"
@@ -1028,3 +1027,4 @@ async def master_group_auto_watcher(client, message: Message):
 
     chat_seen[uid_str] = {"ts": now_ts, "day": today_str, "streak": streak}
     _save_db()
+    
