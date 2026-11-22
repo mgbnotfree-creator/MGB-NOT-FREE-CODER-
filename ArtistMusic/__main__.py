@@ -52,7 +52,7 @@ BOT_COMMANDS = [
     BotCommand("vplayforce", "❖ ғᴏʀᴄᴇ ᴘʟᴀʏ ᴠɪᴅᴇᴏ • ғᴏʀᴄᴇ ᴘʟᴀʏ ᴀɴʏ ᴠɪᴅᴇᴏ ᴛʀᴀᴄᴋ"),
     BotCommand("pause", "❖ ᴘᴀᴜsᴇ sᴛʀᴇᴀᴍ • ᴘᴀᴜsᴇ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ sᴛʀᴇᴀᴍ"),
     BotCommand("resume", "❖ ʀᴇsᴜᴍᴇ sᴛʀᴇᴀᴍ • ʀᴇsᴜᴍᴇ ᴛʜᴇ ᴘᴀᴜsᴇᴅ sᴛʀᴇᴀᴍ"),
-    BotCommand("skip", "❖ sᴋɪᴘ ᴛʀᴀᴄᴋ • sᴋɪᴘ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ᴛʀᴀᴄᴋ"),
+    BotCommand("skip", "❖ sᴋɪᴘ ᴛʀᴀᴄᴋ • sᴋɪᴘ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ sᴛʀᴀᴄᴋ"),
     BotCommand("end", "❖ ᴇɴᴅ sᴛʀᴇᴀᴍ • sᴛᴏᴘ ᴛʜᴇ ᴏɴɢᴏɪɴɢ sᴛʀᴇᴀᴍ"),
     BotCommand("stop", "❖ sᴛᴏᴘ sᴛʀᴇᴀᴍ • sᴛᴏᴘ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ sᴛʀᴇᴀᴍ"),
     BotCommand("queue", "❖ sʜᴏᴡ ǫᴜᴇᴜᴇ • ᴅɪsᴘʟᴀʏ ᴛʀᴀᴄᴋ ǫᴜᴇᴜᴇ ʟɪsᴛ"),
@@ -89,6 +89,17 @@ BOT_COMMANDS = [
     BotCommand("dl", "❖ ʀᴇᴇʟs ᴅᴏᴡɴʟᴏᴀᴅ • ᴅᴏᴡɴʟᴏᴀᴅ ʀᴇᴇʟs & sʜᴏʀᴛs"),
     BotCommand("score", "❖ ʟɪᴠᴇ ᴄʀɪᴄᴋᴇᴛ • ᴄʜᴇᴄᴋ ʟɪᴠᴇ sᴄᴏʀᴇᴄᴀʀᴅ"),
     BotCommand("autoclean", "❖ ᴀᴜᴛᴏ ᴄʟᴇᴀɴ • ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴄᴏᴍᴍᴀɴᴅs"),
+    # ── MGB AUTO SUITE & VIRAL CARDS COMMANDS ──
+    BotCommand("allclean", "❖ 30ᴍ ᴀʟʟ ᴄʟᴇᴀɴ • ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀʟʟ ᴍᴇssᴀɢᴇs ɪɴ 30ᴍ"),
+    BotCommand("antispam", "❖ ᴀɴᴛɪ sᴘᴀᴍ • ғʟᴏᴏᴅ ɢᴜᴀʀᴅ & ᴀᴜᴛᴏ ᴡᴀʀɴɪɴɢ ᴄᴀʀᴅ"),
+    BotCommand("setbday", "❖ sᴇᴛ ʙɪʀᴛʜᴅᴀʏ • ᴀᴜᴛᴏ ʙɪʀᴛʜᴅᴀʏ ᴡɪsʜ ᴄᴀʀᴅ (ᴅᴅ-ᴍᴍ)"),
+    BotCommand("setanni", "❖ sᴇᴛ ᴀɴɴɪᴠᴇʀsᴀʀʏ • ᴀᴜᴛᴏ ᴀɴɴɪᴠᴇʀsᴀʀʏ ᴄᴀʀᴅ (ᴅᴅ-ᴍᴍ)"),
+    BotCommand("dailyvibes", "❖ ᴅᴀɪʟʏ ɢᴍ/ɢɴ • ᴀᴜᴛᴏ ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ & ɴɪɢʜᴛ ᴄᴀʀᴅ"),
+    BotCommand("roast", "❖ ᴀᴜᴛᴏ ʀᴏᴀsᴛ • sᴀᴠᴀɢᴇ ғᴜɴɴʏ ʀᴏᴀsᴛ ᴄᴀʀᴅ"),
+    BotCommand("vibe", "❖ ᴠɪʙᴇ ᴍᴇᴛᴇʀ • ᴄʜᴇᴄᴋ ᴅᴜᴏ ᴏʀ sᴏʟᴏ ᴠɪʙᴇ ᴄᴀʀᴅ"),
+    BotCommand("testbday", "❖ ᴛᴇsᴛ ʙɪʀᴛʜᴅᴀʏ • ᴘʀᴇᴠɪᴇᴡ ʙɪʀᴛʜᴅᴀʏ ᴄᴀʀᴅ"),
+    BotCommand("testanni", "❖ ᴛᴇsᴛ ᴀɴɴɪᴠᴇʀsᴀʀʏ • ᴘʀᴇᴠɪᴇᴡ ᴀɴɴɪᴠᴇʀsᴀʀʏ ᴄᴀʀᴅ"),
+    BotCommand("testbadge", "❖ ᴛᴇsᴛ ʙᴀᴅɢᴇ • ᴘʀᴇᴠɪᴇᴡ ᴡᴇʟᴄᴏᴍᴇ ʙᴀᴄᴋ & ʙᴀᴅɢᴇ"),
 ]
 
 
