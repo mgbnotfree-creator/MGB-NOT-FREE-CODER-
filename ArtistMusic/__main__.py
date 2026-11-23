@@ -41,7 +41,7 @@ from ArtistMusic.plugins import all_modules
 from ArtistMusic.Artistbots import all_modules as artistbots_modules
 
 
-# Bot menu commands (shown in Telegram's command menu)
+# Bot menu commands (shown in Telegram's command menu — 85/100 safe limit)
 BOT_COMMANDS = [
     BotCommand("start", "❖ sᴛᴀʀᴛ ʙᴏᴛ • ᴛᴏ sᴛᴀʀᴛ ᴛʜᴇ ʙᴏᴛ"),
     BotCommand("help", "❖ ʜᴇʟᴘ ᴍᴇɴᴜ • ɢᴇᴛ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs ᴀɴᴅ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ"),
@@ -59,7 +59,7 @@ BOT_COMMANDS = [
     BotCommand("cplay", "❖ ᴄʜᴀɴɴᴇʟ ᴀᴜᴅɪᴏ • ᴘʟᴀʏ ᴀᴜᴅɪᴏ ɪɴ ᴄʜᴀɴɴᴇʟ"),
     BotCommand("cvplay", "❖ ᴄʜᴀɴɴᴇʟ ᴠɪᴅᴇᴏ • ᴘʟᴀʏ ᴠɪᴅᴇᴏ ɪɴ ᴄʜᴀɴɴᴇʟ"),
     BotCommand("cplayforce", "❖ ᴄʜᴀɴɴᴇʟ ғᴏʀᴄᴇ ᴀᴜᴅɪᴏ • ғᴏʀᴄᴇ ᴘʟᴀʏ ɪɴ ᴄʜᴀɴɴᴇʟ"),
-    BotCommand("cvplayforce", "❖ ᴄʜᴀɴɴᴇʟ ғᴏʀᴄᴇ ᴠɪᴅᴇᴏ • ғᴏʀᴄᴇ ᴠɪᴅᴇᴏ ɪɴ ᴄʜᴀɴɴᴇʟ"),
+    BotCommand("cvplayforce", "❖ ᴄʜᴀɴɴᴇʟ ғᴏʀᴄᴇ ᴠɪᴅᴇᴏ • ғᴏʀᴄᴇ ᴘʟᴀʏ ɪɴ ᴄʜᴀɴɴᴇʟ"),
     BotCommand("channelplay", "❖ ᴄᴏɴɴᴇᴄᴛ ᴄʜᴀɴɴᴇʟ • ʟɪɴᴋ ɢʀᴏᴜᴘ ᴛᴏ ᴄʜᴀɴɴᴇʟ"),
     BotCommand("loop", "❖ ʟᴏᴏᴘ ᴍᴏᴅᴇ • ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪsᴀʙʟᴇ ʟᴏᴏᴘ"),
     BotCommand("stats", "❖ ʙᴏᴛ sᴛᴀᴛs • sʜᴏᴡ ʙᴏᴛ sᴛᴀᴛɪsᴛɪᴄs"),
@@ -100,6 +100,40 @@ BOT_COMMANDS = [
     BotCommand("testbday", "❖ ᴛᴇsᴛ ʙɪʀᴛʜᴅᴀʏ • ᴘʀᴇᴠɪᴇᴡ ʙɪʀᴛʜᴅᴀʏ ᴄᴀʀᴅ"),
     BotCommand("testanni", "❖ ᴛᴇsᴛ ᴀɴɴɪᴠᴇʀsᴀʀʏ • ᴘʀᴇᴠɪᴇᴡ ᴀɴɴɪᴠᴇʀsᴀʀʏ ᴄᴀʀᴅ"),
     BotCommand("testbadge", "❖ ᴛᴇsᴛ ʙᴀᴅɢᴇ • ᴘʀᴇᴠɪᴇᴡ ᴡᴇʟᴄᴏᴍᴇ ʙᴀᴄᴋ & ʙᴀᴅɢᴇ"),
+    BotCommand("testgm", "❖ ᴛᴇsᴛ ɢᴍ • ᴘʀᴇᴠɪᴇᴡ ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ ᴄᴀʀᴅ"),
+    BotCommand("testgn", "❖ ᴛᴇsᴛ ɢɴ • ᴘʀᴇᴠɪᴇᴡ ɢᴏᴏᴅ ɴɪɢʜᴛ ᴄᴀʀᴅ"),
+    # ── MGB SOCIAL STUDIO COMMANDS ──
+    BotCommand("tweet", "❖ ғᴀᴋᴇ ᴛᴡᴇᴇᴛ • ᴠᴇʀɪғɪᴇᴅ x / ᴛᴡɪᴛᴛᴇʀ ᴘᴏsᴛ ᴄᴀʀᴅ"),
+    BotCommand("insta", "❖ ғᴀᴋᴇ ɪɴsᴛᴀ • ᴠᴇʀɪғɪᴇᴅ ɪɴsᴛᴀɢʀᴀᴍ ᴘᴏsᴛ ᴄᴀʀᴅ"),
+    BotCommand("fakechat", "❖ ғᴀᴋᴇ ᴡʜᴀᴛsᴀᴘᴘ • ʟᴇᴀᴋᴇᴅ ᴡʜᴀᴛsᴀᴘᴘ ᴄʜᴀᴛ ᴄᴀʀᴅ"),
+    BotCommand("paycard", "❖ ʀᴏʏᴀʟ ʙᴀɴᴋ ᴘʀᴀɴᴋ • ғᴜɴɴʏ ᴘᴀʏᴍᴇɴᴛ ᴘʀᴀɴᴋ ᴄᴀʀᴅ"),
+    BotCommand("passport", "❖ ᴠɪᴘ ᴘᴀssᴘᴏʀᴛ • ᴏғғɪᴄɪᴀʟ ᴘᴀssᴘᴏʀᴛ ᴡɪᴛʜ ǫʀ ᴄᴏᴅᴇ"),
+    BotCommand("shipday", "❖ ᴀᴀᴊ ᴋɪ ʙᴇsᴛ ᴊᴏᴅɪ • ʀᴏʏᴀʟ ᴅᴜᴏ ᴏғ ᴛʜᴇ ᴅᴀʏ"),
+    # ── MGB VC PRO STUDIO COMMANDS ──
+    BotCommand("dedicate", "❖ sᴏɴɢ ᴅᴇᴅɪᴄᴀᴛɪᴏɴ • ᴅᴜᴀʟ-ᴅᴘ ᴠᴄ ᴅᴇᴅɪᴄᴀᴛɪᴏɴ ᴄᴀʀᴅ"),
+    BotCommand("sleeptimer", "❖ ᴠᴄ sʟᴇᴇᴘ ᴛɪᴍᴇʀ • ᴀᴜᴛᴏ-sᴛᴏᴘ ᴠᴄ ɴɪɢʜᴛ ᴛɪᴍᴇʀ"),
+    BotCommand("djvote", "❖ ᴠᴄ ʟɪᴠᴇ ᴅᴊ ᴠᴏᴛᴇ • sᴛᴀʀᴛ 3-sᴏɴɢ ᴅᴊ ʙᴀᴛᴛʟᴇ"),
+    BotCommand("vote", "❖ ᴄᴀsᴛ ᴅᴊ ᴠᴏᴛᴇ • ᴠᴏᴛᴇ 1, 2 ᴏʀ 3 ɪɴ ᴅᴊ ʙᴀᴛᴛʟᴇ"),
+    # ── MGB ECONOMY, CARD SHOP & CONFESSION COMMANDS ──
+    BotCommand("daily", "❖ ᴅᴀɪʟʏ ᴄᴏɪɴs • ᴄʟᴀɪᴍ ᴅᴀɪʟʏ sᴛʀᴇᴀᴋ ᴄᴏɪɴ ʙᴏɴᴜs"),
+    BotCommand("wallet", "❖ ᴠɪᴘ ᴡᴀʟʟᴇᴛ • ᴠɪᴇᴡ ᴍɢʙ ᴄᴏɪɴs & ᴄᴜsᴛᴏᴍ ᴄᴀʀᴅ"),
+    BotCommand("shop", "❖ ᴠɪᴘ ᴄᴀʀᴅ sʜᴏᴘ • ᴜɴʟᴏᴄᴋ ᴛʜᴇᴍᴇs, ʀɪɴɢs & ᴛᴀɢs"),
+    BotCommand("buy", "❖ ʙᴜʏ ɪᴛᴇᴍ • ᴘᴜʀᴄʜᴀsᴇ ᴄᴀʀᴅ sʜᴏᴘ ɪᴛᴇᴍ (1-6)"),
+    BotCommand("equip", "❖ ᴇǫᴜɪᴘ sᴛʏʟᴇ • ᴀᴘᴘʟʏ ᴏᴡɴᴇᴅ ᴠɪᴘ ᴛʜᴇᴍᴇ ᴏʀ ᴛᴀɢ"),
+    BotCommand("give", "❖ ɢɪᴠᴇ ᴄᴏɪɴs • ᴛʀᴀɴsғᴇʀ ᴄᴏɪɴs ᴛᴏ ᴀ ᴍᴇᴍʙᴇʀ"),
+    BotCommand("rich", "❖ ʀɪᴄʜᴇsᴛ ʙᴏᴀʀᴅ • ᴛᴏᴘ 5 ᴍɢʙ ᴄᴏɪɴ ʙɪʟʟɪᴏɴᴀɪʀᴇs"),
+    BotCommand("setconfess", "❖ ᴄᴏɴғᴇssɪᴏɴ ʙᴏx • ᴛᴏɢɢʟᴇ ᴀɴᴏɴʏᴍᴏᴜs ᴄᴏɴғᴇssɪᴏɴs"),
+    BotCommand("confess", "❖ sᴇᴄʀᴇᴛ ᴄᴏɴғᴇss • sᴇɴᴅ 100% ᴀɴᴏɴʏᴍᴏᴜs ᴄᴀʀᴅ"),
+    # ── MGB PARTY GAMES (ADALAT & MAFIA) COMMANDS ──
+    BotCommand("case", "❖ ɢʀᴏᴜᴘ ᴀᴅᴀʟᴀᴛ • ᴏᴘᴇɴ ғᴜɴɴʏ ᴄᴏᴜʀᴛʀᴏᴏᴍ ᴛʀɪᴀʟ"),
+    BotCommand("guilty", "❖ ᴠᴏᴛᴇ ɢᴜɪʟᴛʏ • ᴠᴏᴛᴇ ғᴏʀ sᴀᴢᴀ ɪɴ ᴀᴅᴀʟᴀᴛ"),
+    BotCommand("innocent", "❖ ᴠᴏᴛᴇ ɪɴɴᴏᴄᴇɴᴛ • ᴠᴏᴛᴇ ғᴏʀ ᴠɪᴘ ʙᴀɪʟ ɪɴ ᴀᴅᴀʟᴀᴛ"),
+    BotCommand("verdict", "❖ ᴄᴏᴜʀᴛ ᴠᴇʀᴅɪᴄᴛ • ᴀɴɴᴏᴜɴᴄᴇ ғɪɴᴀʟ ᴀᴅᴀʟᴀᴛ ғᴀɪsʟᴀ"),
+    BotCommand("mafia", "❖ ᴄʜᴏʀ-ᴘᴏʟɪᴄᴇ • ᴏᴘᴇɴ ᴍᴀғɪᴀ ᴘᴀʀᴛʏ ɢᴀᴍᴇ ʟᴏʙʙʏ"),
+    BotCommand("join", "❖ ᴊᴏɪɴ ᴍᴀғɪᴀ • ᴇɴᴛᴇʀ ᴄʜᴏʀ-ᴘᴏʟɪᴄᴇ ɢᴀᴍᴇ ʟᴏʙʙʏ"),
+    BotCommand("startmafia", "❖ sᴛᴀʀᴛ ᴍᴀғɪᴀ • ᴅᴇᴀʟ sᴇᴄʀᴇᴛ ʀᴏʟᴇs & sᴛᴀʀᴛ ʜᴜɴᴛ"),
+    BotCommand("suspect", "❖ ᴠᴏᴛᴇ sᴜsᴘᴇᴄᴛ • ᴄᴀᴛᴄʜ ᴛʜᴇ ʀᴇᴀʟ ᴄʜᴏʀ (/suspect 1)"),
+    BotCommand("endmafia", "❖ ᴇɴᴅ ᴍᴀғɪᴀ • ʀᴇᴠᴇᴀʟ ʀᴇᴀʟ ᴄʜᴏʀ & ғɪɴɪsʜ ɢᴀᴍᴇ"),
 ]
 
 
