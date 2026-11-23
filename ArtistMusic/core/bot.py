@@ -12,210 +12,122 @@
 # Unauthorized copying, modification, or redistribution
 # of this source code without permission is prohibited.
 # ==========================================================
+import pyrogram
+from typing import Optional
 
-import asyncio
-import importlib
-import os
-import sys
-import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
-from pyrogram import idle
-from pyrogram.types import BotCommand
-
-# Raise the file descriptor limit on Linux to avoid "[Errno 24] Too many open files"
-# when serving many groups concurrently (each audio stream + ffmpeg probe opens FDs).
-if sys.platform != "win32":
-    try:
-        import resource
-        _soft, _hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-        _target = min(65536, _hard)
-        if _soft < _target:
-            resource.setrlimit(resource.RLIMIT_NOFILE, (_target, _hard))
-    except Exception:
-        pass
-
-from ArtistMusic import (tune, app, config, db,
-                   logger, stop, userbot, yt)
-from ArtistMusic.plugins import all_modules
-from ArtistMusic.Artistbots import all_modules as artistbots_modules
+from ArtistMusic import config, logger
 
 
-# Bot menu commands (shown in Telegram's command menu)
-BOT_COMMANDS = [
-    BotCommand("start", "❖ sᴛᴀʀᴛ ʙᴏᴛ • ᴛᴏ sᴛᴀʀᴛ ᴛʜᴇ ʙᴏᴛ"),
-    BotCommand("help", "❖ ʜᴇʟᴘ ᴍᴇɴᴜ • ɢᴇᴛ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs ᴀɴᴅ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ"),
-    BotCommand("ping", "❖ ᴘɪɴɢ ʙᴏᴛ • ᴄʜᴇᴄᴋ ᴘɪɴɢ ᴀɴᴅ sʏsᴛᴇᴍ sᴛᴀᴛs"),
-    BotCommand("play", "❖ ᴘʟᴀʏ ᴀᴜᴅɪᴏ ᴏɴ ᴠᴄ • ᴛᴏ ᴘʟᴀʏ ᴀɴʏ ᴀᴜᴅɪᴏ ɪɴ ᴠᴏɪᴄᴇ ᴄʜᴀᴛ"),
-    BotCommand("vplay", "❖ ᴘʟᴀʏ ᴠɪᴅᴇᴏ ᴏɴ ᴠᴄ • ᴛᴏ sᴛʀᴇᴀᴍ ᴀɴʏ ᴠɪᴅᴇᴏ ɪɴ ᴠᴏɪᴄᴇ ᴄʜᴀᴛ"),
-    BotCommand("playforce", "❖ ғᴏʀᴄᴇ ᴘʟᴀʏ ᴀᴜᴅɪᴏ • ғᴏʀᴄᴇ ᴘʟᴀʏ ᴀɴʏ ᴀᴜᴅɪᴏ ᴛʀᴀᴄᴋ"),
-    BotCommand("vplayforce", "❖ ғᴏʀᴄᴇ ᴘʟᴀʏ ᴠɪᴅᴇᴏ • ғᴏʀᴄᴇ ᴘʟᴀʏ ᴀɴʏ ᴠɪᴅᴇᴏ ᴛʀᴀᴄᴋ"),
-    BotCommand("pause", "❖ ᴘᴀᴜsᴇ sᴛʀᴇᴀᴍ • ᴘᴀᴜsᴇ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ sᴛʀᴇᴀᴍ"),
-    BotCommand("resume", "❖ ʀᴇsᴜᴍᴇ sᴛʀᴇᴀᴍ • ʀᴇsᴜᴍᴇ ᴛʜᴇ ᴘᴀᴜsᴇᴅ sᴛʀᴇᴀᴍ"),
-    BotCommand("skip", "❖ sᴋɪᴘ ᴛʀᴀᴄᴋ • sᴋɪᴘ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ sᴛʀᴀᴄᴋ"),
-    BotCommand("end", "❖ ᴇɴᴅ sᴛʀᴇᴀᴍ • sᴛᴏᴘ ᴛʜᴇ ᴏɴɢᴏɪɴɢ sᴛʀᴇᴀᴍ"),
-    BotCommand("stop", "❖ sᴛᴏᴘ sᴛʀᴇᴀᴍ • sᴛᴏᴘ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ sᴛʀᴇᴀᴍ"),
-    BotCommand("queue", "❖ sʜᴏᴡ ǫᴜᴇᴜᴇ • ᴅɪsᴘʟᴀʏ ᴛʀᴀᴄᴋ ǫᴜᴇᴜᴇ ʟɪsᴛ"),
-    BotCommand("cplay", "❖ ᴄʜᴀɴɴᴇʟ ᴀᴜᴅɪᴏ • ᴘʟᴀʏ ᴀᴜᴅɪᴏ ɪɴ ᴄʜᴀɴɴᴇʟ"),
-    BotCommand("cvplay", "❖ ᴄʜᴀɴɴᴇʟ ᴠɪᴅᴇᴏ • ᴘʟᴀʏ ᴠɪᴅᴇᴏ ɪɴ ᴄʜᴀɴɴᴇʟ"),
-    BotCommand("cplayforce", "❖ ᴄʜᴀɴɴᴇʟ ғᴏʀᴄᴇ ᴀᴜᴅɪᴏ • ғᴏʀᴄᴇ ᴘʟᴀʏ ɪɴ ᴄʜᴀɴɴᴇʟ"),
-    BotCommand("cvplayforce", "❖ ᴄʜᴀɴɴᴇʟ ғᴏʀᴄᴇ ᴠɪᴅᴇᴏ • ғᴏʀᴄᴇ ᴠɪᴅᴇᴏ ɪɴ ᴄʜᴀɴɴᴇʟ"),
-    BotCommand("channelplay", "❖ ᴄᴏɴɴᴇᴄᴛ ᴄʜᴀɴɴᴇʟ • ʟɪɴᴋ ɢʀᴏᴜᴘ ᴛᴏ ᴄʜᴀɴɴᴇʟ"),
-    BotCommand("loop", "❖ ʟᴏᴏᴘ ᴍᴏᴅᴇ • ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪsᴀʙʟᴇ ʟᴏᴏᴘ"),
-    BotCommand("stats", "❖ ʙᴏᴛ sᴛᴀᴛs • sʜᴏᴡ ʙᴏᴛ sᴛᴀᴛɪsᴛɪᴄs"),
-    BotCommand("shuffle", "❖ sʜᴜғғʟᴇ ǫᴜᴇᴜᴇ • ʀᴀɴᴅᴏᴍɪᴢᴇ ᴛʀᴀᴄᴋ ᴏʀᴅᴇʀ"),
-    BotCommand("seek", "❖ sᴇᴇᴋ ғᴏʀᴡᴀʀᴅ • sᴋɪᴘ ᴛᴏ sᴘᴇᴄɪғɪᴄ ᴛɪᴍᴇ"),
-    BotCommand("seekback", "❖ sᴇᴇᴋ ʙᴀᴄᴋᴡᴀʀᴅ • ɢᴏ ʙᴀᴄᴋ ᴛᴏ ᴘʀᴇᴠɪᴏᴜs ᴛɪᴍᴇ"),
-    BotCommand("tagall", "❖ ᴛᴀɢ ᴀʟʟ • ᴍᴇɴᴛɪᴏɴ ᴇᴠᴇʀʏᴏɴᴇ ɪɴ ɢʀᴏᴜᴘ"),
-    # ── MGB VIP NEW FEATURES ──
-    BotCommand("afk", "❖ ᴀғᴋ ᴍᴏᴅᴇ • sᴇᴛ sᴍᴀʀᴛ ᴀғᴋ ᴄᴀʀᴅ"),
-    BotCommand("marry", "❖ ɢʀᴏᴜᴘ ᴍᴀʀʀɪᴀɢᴇ • ᴘʀᴏᴘᴏsᴇ & ɢᴇᴛ ᴄᴇʀᴛɪғɪᴄᴀᴛᴇ"),
-    BotCommand("divorce", "❖ ᴅɪᴠᴏʀᴄᴇ • ᴇɴᴅ ɢʀᴏᴜᴘ ᴍᴀʀʀɪᴀɢᴇ"),
-    BotCommand("news", "❖ ʙʀᴇᴀᴋɪɴɢ ɴᴇᴡs • ᴄʀᴇᴀᴛᴇ ᴛᴠ ɴᴇᴡs ᴄᴀʀᴅ"),
-    BotCommand("wanted", "❖ ᴡᴀɴᴛᴇᴅ ᴘᴏsᴛᴇʀ • ᴍᴀᴋᴇ ᴡᴀɴᴛᴇᴅ ᴄᴀʀᴅ"),
-    BotCommand("profile", "❖ ᴠɪᴘ ᴘʀᴏғɪʟᴇ • sʜᴏᴡ ᴍᴜsɪᴄ & ᴄʜᴀᴛ ᴄᴀʀᴅ"),
-    BotCommand("top", "❖ ᴄʜᴀᴛ ʟᴇᴀᴅᴇʀʙᴏᴀʀᴅ • ᴛᴏᴘ ɢʀᴏᴜᴘ ᴍᴇᴍʙᴇʀs"),
-    BotCommand("vcstats", "❖ ᴠᴄ ʟᴇᴀᴅᴇʀʙᴏᴀʀᴅ • ᴛᴏᴘ ᴠᴄ ᴀᴅᴅɪᴄᴛs"),
-    BotCommand("truth", "❖ ᴛʀᴜᴛʜ ɢᴀᴍᴇ • ᴘʟᴀʏ ᴛʀᴜᴛʜ ᴄʜᴀʟʟᴇɴɢᴇ"),
-    BotCommand("dare", "❖ ᴅᴀʀᴇ ɢᴀᴍᴇ • ᴘʟᴀʏ ᴅᴀʀᴇ ᴄʜᴀʟʟᴇɴɢᴇ"),
-    BotCommand("rps", "❖ ʀᴘs ɢᴀᴍᴇ • ʀᴏᴄᴋ ᴘᴀᴘᴇʀ sᴄɪssᴏʀs"),
-    BotCommand("voteskip", "❖ ᴠᴏᴛᴇ sᴋɪᴘ • ᴅᴇᴍᴏᴄʀᴀᴄʏ ᴛʀᴀᴄᴋ sᴋɪᴘ"),
-    BotCommand("karaoke", "❖ ᴀᴜᴅɪᴏ ғɪʟᴛᴇʀs • ᴋᴀʀᴀᴏᴋᴇ, ʙᴀss & sʟᴏᴡᴇᴅ"),
-    BotCommand("entry", "❖ ᴠᴄ ᴇɴᴛʀʏ ʙɢᴍ • sᴇᴛ ᴠɪᴘ ᴇɴᴛʀʏ sᴏᴜɴᴅ"),
-    BotCommand("sfx", "❖ ᴍᴇᴍᴇ sᴏᴜɴᴅʙᴏᴀʀᴅ • ɪɴsᴛᴀɴᴛ ᴠᴏɪᴄᴇ sғx"),
-    BotCommand("quiz", "❖ ᴍᴜsɪᴄ ǫᴜɪᴢ • ɢᴜᴇss ᴛʜᴇ ʙᴏʟʟʏᴡᴏᴏᴅ sᴏɴɢ"),
-    BotCommand("whisper", "❖ sᴇᴄʀᴇᴛ ᴡʜɪsᴘᴇʀ • sᴇɴᴅ ᴘʀɪᴠᴀᴛᴇ ᴍᴇssᴀɢᴇ"),
-    BotCommand("q", "❖ ǫᴜᴏᴛᴇ sᴛɪᴄᴋᴇʀ • ᴍᴀᴋᴇ ᴍᴇssᴀɢᴇ sᴛɪᴄᴋᴇʀ"),
-    BotCommand("dl", "❖ ʀᴇᴇʟs ᴅᴏᴡɴʟᴏᴀᴅ • ᴅᴏᴡɴʟᴏᴀᴅ ʀᴇᴇʟs & sʜᴏʀᴛs"),
-    BotCommand("score", "❖ ʟɪᴠᴇ ᴄʀɪᴄᴋᴇᴛ • ᴄʜᴇᴄᴋ ʟɪᴠᴇ sᴄᴏʀᴇᴄᴀʀᴅ"),
-    BotCommand("autoclean", "❖ ᴀᴜᴛᴏ ᴄʟᴇᴀɴ • ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴄᴏᴍᴍᴀɴᴅs"),
-    # ── MGB AUTO SUITE & VIRAL CARDS COMMANDS ──
-    BotCommand("allclean", "❖ 30ᴍ ᴀʟʟ ᴄʟᴇᴀɴ • ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀʟʟ ᴍᴇssᴀɢᴇs ɪɴ 30ᴍ"),
-    BotCommand("antispam", "❖ ᴀɴᴛɪ sᴘᴀᴍ • ғʟᴏᴏᴅ ɢᴜᴀʀᴅ & ᴀᴜᴛᴏ ᴡᴀʀɴɪɴɢ ᴄᴀʀᴅ"),
-    BotCommand("setbday", "❖ sᴇᴛ ʙɪʀᴛʜᴅᴀʏ • ᴀᴜᴛᴏ ʙɪʀᴛʜᴅᴀʏ ᴡɪsʜ ᴄᴀʀᴅ (ᴅᴅ-ᴍᴍ)"),
-    BotCommand("setanni", "❖ sᴇᴛ ᴀɴɴɪᴠᴇʀsᴀʀʏ • ᴀᴜᴛᴏ ᴀɴɴɪᴠᴇʀsᴀʀʏ ᴄᴀʀᴅ (ᴅᴅ-ᴍᴍ)"),
-    BotCommand("dailyvibes", "❖ ᴅᴀɪʟʏ ɢᴍ/ɢɴ • ᴀᴜᴛᴏ ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ & ɴɪɢʜᴛ ᴄᴀʀᴅ"),
-    BotCommand("roast", "❖ ᴀᴜᴛᴏ ʀᴏᴀsᴛ • sᴀᴠᴀɢᴇ ғᴜɴɴʏ ʀᴏᴀsᴛ ᴄᴀʀᴅ"),
-    BotCommand("vibe", "❖ ᴠɪʙᴇ ᴍᴇᴛᴇʀ • ᴄʜᴇᴄᴋ ᴅᴜᴏ ᴏʀ sᴏʟᴏ ᴠɪʙᴇ ᴄᴀʀᴅ"),
-    BotCommand("testbday", "❖ ᴛᴇsᴛ ʙɪʀᴛʜᴅᴀʏ • ᴘʀᴇᴠɪᴇᴡ ʙɪʀᴛʜᴅᴀʏ ᴄᴀʀᴅ"),
-    BotCommand("testanni", "❖ ᴛᴇsᴛ ᴀɴɴɪᴠᴇʀsᴀʀʏ • ᴘʀᴇᴠɪᴇᴡ ᴀɴɴɪᴠᴇʀsᴀʀʏ ᴄᴀʀᴅ"),
-    BotCommand("testbadge", "❖ ᴛᴇsᴛ ʙᴀᴅɢᴇ • ᴘʀᴇᴠɪᴇᴡ ᴡᴇʟᴄᴏᴍᴇ ʙᴀᴄᴋ & ʙᴀᴅɢᴇ"),
-]
+class MutableUserFilter(pyrogram.filters.Filter, set):
+    """
+    A Pyrogram filter that is ALSO a mutable set of user ids.
+
+    Plain `pyrogram.filters.user()` only supports being called as a
+    filter — it has no `.add()`, `.discard()`, `.update()`, `in`, or
+    `len()`. This project's plugins (blacklist.py, sudoers.py,
+    stats.py, start.py, __main__.py) all treat `app.bl_users` and
+    `app.sudo_filter` as if they were sets, so we give them a real
+    set underneath a real filter.
+    """
+
+    def __init__(self, user_ids=None):
+        set.__init__(self, user_ids or [])
+
+    async def __call__(self, _, update):
+        user = getattr(update, "from_user", None)
+        return bool(user and user.id in self)
 
 
-# HTTP Server for Render health checks
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    """Simple HTTP handler for Render health checks"""
-    
-    def do_GET(self):
-        """Handle GET requests"""
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        self.wfile.write(b'Bot is running')
-    
-    def log_message(self, format, *args):
-        """Suppress log messages to keep console clean"""
-        pass
+class Bot(pyrogram.Client):
+    """
+    Main bot client class extending Pyrogram's Client.
 
+    This class initializes the Telegram bot with proper configuration
+    and provides methods for starting and stopping the bot.
 
-def run_http_server():
-    """Run a simple HTTP server for Render health checks"""
-    port = int(os.environ.get("PORT", 8000))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-    logger.info(f"🌐 HTTP health check server started on port {port}")
-    server.serve_forever()
+    Attributes:
+        owner (int): Owner's user ID
+        logger (int): Logger group/channel ID
+        bl_users (Filter): Filter for blacklisted users
+        sudoers (set): Set of sudo user IDs
+        sudo_filter (Filter): Filter for sudo users
+        id (int): Bot's user ID (set after boot)
+        name (str): Bot's first name (set after boot)
+        username (str): Bot's username (set after boot)
+        mention (str): Bot's mention tag (set after boot)
+    """
 
+    def __init__(self):
+        """Initialize the bot client with configuration settings."""
+        super().__init__(
+            name="ArtistMusic",
+            api_id=config.API_ID,
+            api_hash=config.API_HASH,
+            bot_token=config.BOT_TOKEN,
+            parse_mode=pyrogram.enums.ParseMode.HTML,
+            max_concurrent_transmissions=7,
+            link_preview_options=pyrogram.types.LinkPreviewOptions(
+                is_disabled=True),
+        )
 
-async def main():
-    try:
-        # Step 1: Validate required environment variables
+        self.owner: int = config.OWNER_ID
+        self.logger: int = config.LOGGER_ID
+        self.bl_users: MutableUserFilter = MutableUserFilter()
+        self.sudoers: set = {self.owner}  # Set of sudo user IDs
+        self.sudo_filter: MutableUserFilter = MutableUserFilter({self.owner})
+
+        # These will be set after boot()
+        self.id: Optional[int] = None
+        self.name: Optional[str] = None
+        self.username: Optional[str] = None
+        self.mention: Optional[str] = None
+
+    async def boot(self) -> None:
+        """
+        Start the bot and perform initial setup.
+
+        This method:
+        - Starts the Pyrogram client
+        - Retrieves bot information
+        - Verifies access to logger group
+        - Checks bot admin status in logger group
+
+        Raises:
+            SystemExit: If bot cannot access logger group or is not an admin.
+        """
+        await super().start()
+
+        # Set bot information
+        self.id = self.me.id
+        self.name = self.me.first_name
+        self.username = self.me.username
+        self.mention = self.me.mention
+
+        # Verify logger group access
         try:
-            config.check()
-        except SystemExit as e:
-            logger.error(str(e))
-            return
+            await self.send_message(self.logger, "🤖 ʙᴏᴛ ꜱᴛᴀʀᴛᴇᴅ")
+            member = await self.get_chat_member(self.logger, self.id)
+        except Exception as ex:
+            raise SystemExit(
+                f"❌ ʙᴏᴛ ꜰᴀɪʟᴇᴅ ᴛᴏ ᴀᴄᴄᴇꜱꜱ ʟᴏɢɢᴇʀ ɢʀᴏᴜᴘ: {self.logger}\n"
+                f"ʀᴇᴀꜱᴏɴ: {ex}\n"
+                f"ᴘʟᴇᴀꜱᴇ ᴇɴꜱᴜʀᴇ ᴛʜᴇ ʙᴏᴛ ɪꜱ ᴀᴅᴅᴇᴅ ᴛᴏ ᴛʜᴇ ʟᴏɢɢᴇʀ ɢʀᴏᴜᴘ."
+            )
 
-        # Step 2: Start HTTP server in a separate thread (for Render)
-        http_thread = threading.Thread(target=run_http_server, daemon=True)
-        http_thread.start()
-        logger.info("🌐 HTTP server thread started for Render health checks")
+        # Verify admin status
+        if member.status != pyrogram.enums.ChatMemberStatus.ADMINISTRATOR:
+            raise SystemExit(
+                f"❌ ʙᴏᴛ ɪꜱ ɴᴏᴛ ᴀɴ ᴀᴅᴍɪɴɪꜱᴛʀᴀᴛᴏʀ ɪɴ ʟᴏɢɢᴇʀ ɢʀᴏᴜᴘ: {self.logger}\n"
+                f"ᴘʟᴇᴀꜱᴇ ᴘʀᴏᴍᴏᴛᴇ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴀᴅᴍɪɴɪꜱᴛʀᴀᴛᴏʀ ᴡɪᴛʜ ɴᴇᴄᴇꜱꜱᴀʀʏ ᴘᴇʀᴍɪꜱꜱɪᴏɴꜱ."
+            )
 
-        # Step 3: Connect to MongoDB database
-        await db.connect()
-        
-        # Step 4: Start the main bot client
-        await app.boot()
-        
-        # Step 5: Start assistant/userbot clients (for joining voice chats)
-        await userbot.boot()
-        
-        # Step 6: Initialize voice call handler
-        await tune.boot()
+        logger.info(f"🤖 Bot started successfully as @{self.username}")
 
-        # Step 7: Load all plugin modules (commands like /play, /pause, etc.)
-        for module in all_modules:
-            try:
-                importlib.import_module(f"ArtistMusic.plugins.{module}")
-            except Exception as e:
-                logger.error(f"Failed to load plugin {module}: {e}", exc_info=True)
-        # Artistbots group-manager modules (ArtistMusic/Artistbots/)
-        for module in artistbots_modules:
-            try:
-                importlib.import_module(f"ArtistMusic.Artistbots.{module}")
-            except Exception as e:
-                logger.error(f"Failed to load Artistbots module {module}: {e}", exc_info=True)
-        logger.info(f"🔌 Loaded {len(all_modules) + len(artistbots_modules)} plugin modules.")
+    async def exit(self) -> None:
+        """
+        Gracefully stop the bot client.
 
-        # Set Telegram command menu
-        try:
-            await app.set_bot_commands(BOT_COMMANDS)
-            logger.info(f"📋 Set {len(BOT_COMMANDS)} bot commands.")
-        except Exception as e:
-            logger.error(f"Failed to set bot commands: {e}")
-
-        # Step 8: Load sudo users and blacklisted users from database
-        sudoers = await db.get_sudoers()
-        app.sudoers.update(sudoers)  # Add sudo users to set
-        app.sudo_filter.update(sudoers)  # Add sudo users to filter
-        app.bl_users.update(await db.get_blacklisted())  # Add blacklisted users to filter
-        logger.info(f"👑 Loaded {len(app.sudoers)} sudo users.")
-        logger.info("\n🎉 Bot started successfully! Ready to play music! 🎵\n")
-
-        # Step 9: Keep the bot running (press Ctrl+C to stop)
-        try:
-            await idle()
-        except KeyboardInterrupt:
-            logger.info("Received stop signal...")
-        except Exception as e:
-            logger.error(f"Error during idle: {e}", exc_info=True)
-        
-        # Step 10: Cleanup and shutdown when bot is stopped
-        await stop()
-    except Exception as e:
-        logger.error(f"Critical error in main: {e}", exc_info=True)
-        raise
-
-
-if __name__ == "__main__":
-    try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
-    except KeyboardInterrupt:
-        logger.info("Bot stopped by user (Ctrl+C)")
-    except SystemExit as e:
-        logger.error(f"Bot exited with system error: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error caused bot to stop: {e}", exc_info=True)
-        # Don't raise - allow clean shutdown
-    finally:
-        # Ensure cleanup happens
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.stop()
-        except:
-            pass
-
-Command add
+        This method stops the Pyrogram client and logs the shutdown.
+        """
+        await super().stop()
+        logger.info("🤖 Bot client stopped.")
