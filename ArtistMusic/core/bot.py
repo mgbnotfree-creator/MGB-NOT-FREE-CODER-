@@ -12,6 +12,8 @@
 # Unauthorized copying, modification, or redistribution
 # of this source code without permission is prohibited.
 # ==========================================================
+import logging
+import os
 import pyrogram
 from typing import Optional
 
@@ -21,13 +23,6 @@ from ArtistMusic import config, logger
 class MutableUserFilter(pyrogram.filters.Filter, set):
     """
     A Pyrogram filter that is ALSO a mutable set of user ids.
-
-    Plain `pyrogram.filters.user()` only supports being called as a
-    filter — it has no `.add()`, `.discard()`, `.update()`, `in`, or
-    `len()`. This project's plugins (blacklist.py, sudoers.py,
-    stats.py, start.py, __main__.py) all treat `app.bl_users` and
-    `app.sudo_filter` as if they were sets, so we give them a real
-    set underneath a real filter.
     """
 
     def __init__(self, user_ids=None):
@@ -41,61 +36,60 @@ class MutableUserFilter(pyrogram.filters.Filter, set):
 class Bot(pyrogram.Client):
     """
     Main bot client class extending Pyrogram's Client.
-
-    This class initializes the Telegram bot with proper configuration
-    and provides methods for starting and stopping the bot.
-
-    Attributes:
-        owner (int): Owner's user ID
-        logger (int): Logger group/channel ID
-        bl_users (Filter): Filter for blacklisted users
-        sudoers (set): Set of sudo user IDs
-        sudo_filter (Filter): Filter for sudo users
-        id (int): Bot's user ID (set after boot)
-        name (str): Bot's first name (set after boot)
-        username (str): Bot's username (set after boot)
-        mention (str): Bot's mention tag (set after boot)
     """
 
     def __init__(self):
-        """Initialize the bot client with configuration settings."""
-        super().__init__(
+        """Initialize the bot client with Render-safe settings."""
+        bot_session = (os.getenv("BOT_SESSION") or "").strip() or None
+
+        client_kwargs = dict(
             name="ArtistMusic",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
-            bot_token=config.BOT_TOKEN,
+            in_memory=True,
+            ipv6=False,
+            sleep_threshold=60,
             parse_mode=pyrogram.enums.ParseMode.HTML,
             max_concurrent_transmissions=7,
             link_preview_options=pyrogram.types.LinkPreviewOptions(
-                is_disabled=True),
+                is_disabled=True
+            ),
         )
+        if bot_session:
+            client_kwargs["session_string"] = bot_session
+        else:
+            client_kwargs["bot_token"] = config.BOT_TOKEN
+
+        super().__init__(**client_kwargs)
 
         self.owner: int = config.OWNER_ID
         self.logger: int = config.LOGGER_ID
         self.bl_users: MutableUserFilter = MutableUserFilter()
-        self.sudoers: set = {self.owner}  # Set of sudo user IDs
+        self.sudoers: set = {self.owner}
         self.sudo_filter: MutableUserFilter = MutableUserFilter({self.owner})
 
-        # These will be set after boot()
+        # Keep Pyrogram's client name intact until boot() sets Telegram first_name
         self.id: Optional[int] = None
-        self.name: Optional[str] = None
         self.username: Optional[str] = None
         self.mention: Optional[str] = None
 
     async def boot(self) -> None:
         """
         Start the bot and perform initial setup.
-
-        This method:
-        - Starts the Pyrogram client
-        - Retrieves bot information
-        - Verifies access to logger group
-        - Checks bot admin status in logger group
-
-        Raises:
-            SystemExit: If bot cannot access logger group or is not an admin.
         """
-        await super().start()
+        # Temporarily show Pyrogram's real MTProto/DC warning during login
+        pyro_sess_log = logging.getLogger("pyrogram.session.session")
+        pyro_conn_log = logging.getLogger("pyrogram.connection.connection")
+        old_sess_lvl = pyro_sess_log.level
+        old_conn_lvl = pyro_conn_log.level
+        pyro_sess_log.setLevel(logging.WARNING)
+        pyro_conn_log.setLevel(logging.WARNING)
+
+        try:
+            await super().start()
+        finally:
+            pyro_sess_log.setLevel(old_sess_lvl)
+            pyro_conn_log.setLevel(old_conn_lvl)
 
         # Set bot information
         self.id = self.me.id
@@ -126,9 +120,6 @@ class Bot(pyrogram.Client):
     async def exit(self) -> None:
         """
         Gracefully stop the bot client.
-
-        This method stops the Pyrogram client and logs the shutdown.
         """
         await super().stop()
         logger.info("🤖 Bot client stopped.")
-        
