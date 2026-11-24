@@ -1,26 +1,35 @@
 # ==========================================================
-# Copyright (c) 2026 MGB NOT FREE CODER
+# Copyright (c) 2026 ArtistBots
 # All Rights Reserved.
 #
-# Project      : MGB API Telegram Music Bot
-# Powered By   : ❖ MGB NOT FREE ❖
+# Project      : ArtistBots API Telegram Music Bot
+# Powered By   : Artist
 # Type         : API Based Telegram Music Bot
 #
-# Bot          : @Yasmeen_api_bot
-# Channel      : https://t.me/MGB_CODER
+# Bot          : @ArtistApibot
+# Channel      : https://t.me/artistbots
+# GitHub       : https://github.com/elevenyts/ArtistMusic
+#
+# Unauthorized copying, modification, or redistribution
+# of this source code without permission is prohibited.
 # ==========================================================
-import logging
-import os
 import pyrogram
 from typing import Optional
-
-from pyrogram import raw
 
 from ArtistMusic import config, logger
 
 
 class MutableUserFilter(pyrogram.filters.Filter, set):
-    """A Pyrogram filter that is ALSO a mutable set of user ids."""
+    """
+    A Pyrogram filter that is ALSO a mutable set of user ids.
+
+    Plain `pyrogram.filters.user()` only supports being called as a
+    filter — it has no `.add()`, `.discard()`, `.update()`, `in`, or
+    `len()`. This project's plugins (blacklist.py, sudoers.py,
+    stats.py, start.py, __main__.py) all treat `app.bl_users` and
+    `app.sudo_filter` as if they were sets, so we give them a real
+    set underneath a real filter.
+    """
 
     def __init__(self, user_ids=None):
         set.__init__(self, user_ids or [])
@@ -31,112 +40,71 @@ class MutableUserFilter(pyrogram.filters.Filter, set):
 
 
 class Bot(pyrogram.Client):
-    """Main bot client class with Direct Multi-DC login & BOT_SESSION support."""
+    """
+    Main bot client class extending Pyrogram's Client.
+
+    This class initializes the Telegram bot with proper configuration
+    and provides methods for starting and stopping the bot.
+
+    Attributes:
+        owner (int): Owner's user ID
+        logger (int): Logger group/channel ID
+        bl_users (Filter): Filter for blacklisted users
+        sudoers (set): Set of sudo user IDs
+        sudo_filter (Filter): Filter for sudo users
+        id (int): Bot's user ID (set after boot)
+        name (str): Bot's first name (set after boot)
+        username (str): Bot's username (set after boot)
+        mention (str): Bot's mention tag (set after boot)
+    """
 
     def __init__(self):
-        bot_session = (os.getenv("BOT_SESSION") or "").strip() or None
-        self._has_bot_session = bool(bot_session)
-
-        client_kwargs = dict(
+        """Initialize the bot client with configuration settings."""
+        super().__init__(
             name="ArtistMusic",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
-            in_memory=True,
-            ipv6=False,
-            sleep_threshold=60,
+            bot_token=config.BOT_TOKEN,
             parse_mode=pyrogram.enums.ParseMode.HTML,
             max_concurrent_transmissions=7,
             link_preview_options=pyrogram.types.LinkPreviewOptions(
-                is_disabled=True
-            ),
+                is_disabled=True),
         )
-        if bot_session:
-            client_kwargs["session_string"] = bot_session
-        else:
-            client_kwargs["bot_token"] = config.BOT_TOKEN
-
-        super().__init__(**client_kwargs)
 
         self.owner: int = config.OWNER_ID
         self.logger: int = config.LOGGER_ID
         self.bl_users: MutableUserFilter = MutableUserFilter()
-        self.sudoers: set = {self.owner}
+        self.sudoers: set = {self.owner}  # Set of sudo user IDs
         self.sudo_filter: MutableUserFilter = MutableUserFilter({self.owner})
 
+        # These will be set after boot()
         self.id: Optional[int] = None
+        self.name: Optional[str] = None
         self.username: Optional[str] = None
         self.mention: Optional[str] = None
 
-    async def _start_with_direct_dc(self) -> None:
-        """Try direct login across DC 5 -> 4 -> 1 -> 2 using Pyrogram's native Auth/Session."""
-        last_err = None
-        for dc in (5, 4, 1, 2):
-            orig_open = self.storage.open
-            orig_dc_id = self.storage.dc_id
-
-            async def _open_with_dc(_orig_open=orig_open, _orig_dc=orig_dc_id, _dc=dc):
-                await _orig_open()
-                await _orig_dc(_dc)
-
-            async def _forced_dc_id(*args, _orig_dc=orig_dc_id, _dc=dc, **kwargs):
-                if (not args and not kwargs) or (len(args) == 1 and args[0] is object):
-                    return await _orig_dc()
-                return await _orig_dc(_dc)
-
-            try:
-                logger.info(f"🌐 Trying direct bot login on DC {dc}...")
-                self.storage.open = _open_with_dc
-                self.storage.dc_id = _forced_dc_id
-                try:
-                    is_authorized = await self.connect()
-                finally:
-                    self.storage.open = orig_open
-                    self.storage.dc_id = orig_dc_id
-
-                if not is_authorized:
-                    await self.sign_in_bot(self.bot_token)
-
-                await self.invoke(raw.functions.updates.GetState())
-                self.me = await self.get_me()
-                await self.initialize()
-                logger.info(f"✅ Bot authorized on DC {await self.storage.dc_id()}!")
-                return
-            except Exception as err:
-                last_err = err
-                logger.warning(f"⚠️ Direct login on DC {dc} failed: {err}")
-                try:
-                    if getattr(self, "is_connected", False):
-                        await self.disconnect()
-                    else:
-                        if getattr(self, "session", None):
-                            await self.session.stop()
-                        await self.storage.close()
-                except Exception:
-                    pass
-                self.session = None
-
-        raise last_err or RuntimeError("All Telegram DCs failed for ImportBotAuthorization")
-
     async def boot(self) -> None:
-        """Start the bot and verify logger group access."""
-        pyro_sess_log = logging.getLogger("pyrogram.session.session")
-        old_lvl = pyro_sess_log.level
-        pyro_sess_log.setLevel(logging.WARNING)
+        """
+        Start the bot and perform initial setup.
 
-        try:
-            if self._has_bot_session:
-                logger.info("🔑 Booting bot using BOT_SESSION (skipping ImportBotAuthorization)...")
-                await super().start()
-            else:
-                await self._start_with_direct_dc()
-        finally:
-            pyro_sess_log.setLevel(old_lvl)
+        This method:
+        - Starts the Pyrogram client
+        - Retrieves bot information
+        - Verifies access to logger group
+        - Checks bot admin status in logger group
 
+        Raises:
+            SystemExit: If bot cannot access logger group or is not an admin.
+        """
+        await super().start()
+
+        # Set bot information
         self.id = self.me.id
         self.name = self.me.first_name
         self.username = self.me.username
         self.mention = self.me.mention
 
+        # Verify logger group access
         try:
             await self.send_message(self.logger, "🤖 ʙᴏᴛ ꜱᴛᴀʀᴛᴇᴅ")
             member = await self.get_chat_member(self.logger, self.id)
@@ -147,6 +115,7 @@ class Bot(pyrogram.Client):
                 f"ᴘʟᴇᴀꜱᴇ ᴇɴꜱᴜʀᴇ ᴛʜᴇ ʙᴏᴛ ɪꜱ ᴀᴅᴅᴇᴅ ᴛᴏ ᴛʜᴇ ʟᴏɢɢᴇʀ ɢʀᴏᴜᴘ."
             )
 
+        # Verify admin status
         if member.status != pyrogram.enums.ChatMemberStatus.ADMINISTRATOR:
             raise SystemExit(
                 f"❌ ʙᴏᴛ ɪꜱ ɴᴏᴛ ᴀɴ ᴀᴅᴍɪɴɪꜱᴛʀᴀᴛᴏʀ ɪɴ ʟᴏɢɢᴇʀ ɢʀᴏᴜᴘ: {self.logger}\n"
@@ -156,7 +125,10 @@ class Bot(pyrogram.Client):
         logger.info(f"🤖 Bot started successfully as @{self.username}")
 
     async def exit(self) -> None:
-        """Gracefully stop the bot client."""
+        """
+        Gracefully stop the bot client.
+
+        This method stops the Pyrogram client and logs the shutdown.
+        """
         await super().stop()
         logger.info("🤖 Bot client stopped.")
-        
