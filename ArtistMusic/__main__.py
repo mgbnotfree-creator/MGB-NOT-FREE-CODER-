@@ -23,14 +23,6 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pyrogram import idle
 from pyrogram.types import BotCommand
 
-# Boost Pyrogram MTProto timeouts for Render's network handoff
-try:
-    from pyrogram.session import Session
-    Session.WAIT_TIMEOUT = 30
-    Session.START_TIMEOUT = 30
-except Exception:
-    pass
-
 # Raise the file descriptor limit on Linux to avoid "[Errno 24] Too many open files"
 # when serving many groups concurrently (each audio stream + ffmpeg probe opens FDs).
 if sys.platform != "win32":
@@ -148,14 +140,14 @@ BOT_COMMANDS = [
 # HTTP Server for Render health checks
 class HealthCheckHandler(BaseHTTPRequestHandler):
     """Simple HTTP handler for Render health checks"""
-
+    
     def do_GET(self):
         """Handle GET requests"""
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
         self.wfile.write(b'Bot is running')
-
+    
     def log_message(self, format, *args):
         """Suppress log messages to keep console clean"""
         pass
@@ -167,36 +159,6 @@ def run_http_server():
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     logger.info(f"🌐 HTTP health check server started on port {port}")
     server.serve_forever()
-
-
-async def _boot_with_retry(target, label: str, attempts: int = 6, wait_sec: int = 10):
-    """Safely retry Telegram boot with clean disconnect & IPv4 force on Render."""
-    for idx in range(1, attempts + 1):
-        try:
-            if hasattr(target, "ipv6"):
-                target.ipv6 = False
-            if hasattr(target, "sleep_threshold"):
-                target.sleep_threshold = 60
-            await target.boot()
-            return
-        except Exception as e:
-            if idx == attempts:
-                raise
-            logger.warning(f"⚠️ {label} boot retry {idx}/{attempts} in {wait_sec}s: {e}")
-            try:
-                if getattr(target, "is_connected", False):
-                    await target.disconnect()
-            except Exception:
-                pass
-            try:
-                if not getattr(target, "in_memory", True) and getattr(target, "name", None):
-                    for ext in (".session", ".session-journal"):
-                        sf = f"{target.name}{ext}"
-                        if os.path.isfile(sf):
-                            os.remove(sf)
-            except Exception:
-                pass
-            await asyncio.sleep(wait_sec)
 
 
 async def main():
@@ -215,13 +177,13 @@ async def main():
 
         # Step 3: Connect to MongoDB database
         await db.connect()
-
-        # Step 4: Start the main bot client (with Render timeout auto-retry)
-        await _boot_with_retry(app, "Bot")
-
+        
+        # Step 4: Start the main bot client
+        await app.boot()
+        
         # Step 5: Start assistant/userbot clients (for joining voice chats)
-        await _boot_with_retry(userbot, "Userbot")
-
+        await userbot.boot()
+        
         # Step 6: Initialize voice call handler
         await tune.boot()
 
@@ -261,7 +223,7 @@ async def main():
             logger.info("Received stop signal...")
         except Exception as e:
             logger.error(f"Error during idle: {e}", exc_info=True)
-
+        
         # Step 10: Cleanup and shutdown when bot is stopped
         await stop()
     except Exception as e:
@@ -289,3 +251,4 @@ if __name__ == "__main__":
                 loop.stop()
         except:
             pass
+            
