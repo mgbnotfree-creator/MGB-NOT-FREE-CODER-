@@ -1,13 +1,13 @@
 # ==========================================================
 # Copyright (c) 2026 MGB NOT FREE CODER
 # All Rights Reserved.
-# 
+#
 # Project      : MGB API Telegram Music Bot
 # Powered By   : ❖ MGB NOT FREE ❖
 # Type         : API Based Telegram Music Bot
 #
 # Bot          : @Yasmeen_api_bot
-# Channel      : https://t.me/MGB_CODER
+# Channel      : https://t.me/mgb_not_free_coder
 #
 # Unauthorized copying, modification, or redistribution
 # of this source code without permission is prohibited.
@@ -35,13 +35,21 @@ if sys.platform != "win32":
     except Exception:
         pass
 
-from ArtistMusic import (tune, app, config, db,
-                   logger, stop, userbot, yt)
+from ArtistMusic import (
+    tune,
+    app,
+    config,
+    db,
+    logger,
+    stop,
+    userbot,
+    yt,
+)
 from ArtistMusic.plugins import all_modules
 from ArtistMusic.Artistbots import all_modules as artistbots_modules
 
 
-# Bot menu commands (shown in Telegram's command menu — 85/100 safe limit)
+# Bot menu commands (shown in Telegram's command menu — 99/100 safe limit)
 BOT_COMMANDS = [
     BotCommand("start", "❖ sᴛᴀʀᴛ ʙᴏᴛ • ᴛᴏ sᴛᴀʀᴛ ᴛʜᴇ ʙᴏᴛ"),
     BotCommand("help", "❖ ʜᴇʟᴘ ᴍᴇɴᴜ • ɢᴇᴛ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs ᴀɴᴅ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ"),
@@ -134,20 +142,35 @@ BOT_COMMANDS = [
     BotCommand("startmafia", "❖ sᴛᴀʀᴛ ᴍᴀғɪᴀ • ᴅᴇᴀʟ sᴇᴄʀᴇᴛ ʀᴏʟᴇs & sᴛᴀʀᴛ ʜᴜɴᴛ"),
     BotCommand("suspect", "❖ ᴠᴏᴛᴇ sᴜsᴘᴇᴄᴛ • ᴄᴀᴛᴄʜ ᴛʜᴇ ʀᴇᴀʟ ᴄʜᴏʀ (/suspect 1)"),
     BotCommand("endmafia", "❖ ᴇɴᴅ ᴍᴀғɪᴀ • ʀᴇᴠᴇᴀʟ ʀᴇᴀʟ ᴄʜᴏʀ & ғɪɴɪsʜ ɢᴀᴍᴇ"),
+    # ── MGB ASSISTANT MANAGER COMMANDS ──
+    BotCommand("addass", "❖ ᴀᴅᴅ ᴀssɪsᴛᴀɴᴛ • ᴀᴅᴅ ɴᴇᴡ ᴀssɪsᴛᴀɴᴛ ᴠɪᴀ sᴇssɪᴏɴ"),
+    BotCommand("loginass", "❖ ʟᴏɢɪɴ ᴀssɪsᴛᴀɴᴛ • ᴀᴅᴅ ᴀssɪsᴛᴀɴᴛ ᴠɪᴀ ᴘʜᴏɴᴇ ᴏᴛᴘ"),
+    BotCommand("asslist", "❖ ᴀssɪsᴛᴀɴᴛ ʟɪsᴛ • ᴠɪᴇᴡ ᴀʟʟ ᴀᴄᴛɪᴠᴇ ᴀssɪsᴛᴀɴᴛs"),
+    BotCommand("delass", "❖ ᴅᴇʟᴇᴛᴇ ᴀssɪsᴛᴀɴᴛ • ʀᴇᴍᴏᴠᴇ ᴅʏɴᴀᴍɪᴄ ᴀssɪsᴛᴀɴᴛ"),
+    # ── MGB AUTO BROADCAST PROMOTION COMMANDS ──
+    BotCommand("autopromo", "❖ ᴀᴜᴛᴏ ᴘʀᴏᴍᴏ • 10ᴍ ᴀᴜᴛᴏ ʙʀᴏᴀᴅᴄᴀsᴛ ᴘᴀɴᴇʟ"),
+    BotCommand("addpromo", "❖ ᴀᴅᴅ ᴘʀᴏᴍᴏ • sᴀᴠᴇ ɴᴇᴡ ᴘʀᴏᴍᴏ ʙᴀɴɴᴇʀ & ᴛᴇxᴛ"),
+    BotCommand("promolist", "❖ ᴘʀᴏᴍᴏ ʟɪsᴛ • ᴠɪᴇᴡ sᴀᴠᴇᴅ ᴘʀᴏᴍᴏ ʙᴀɴɴᴇʀs"),
+    BotCommand("setpromotime", "❖ ᴘʀᴏᴍᴏ ᴛɪᴍᴇʀ • sᴇᴛ ᴀᴜᴛᴏ ʙʀᴏᴀᴅᴄᴀsᴛ ɪɴᴛᴇʀᴠᴀʟ"),
+    BotCommand("promonow", "❖ ᴘʀᴏᴍᴏ ɴᴏᴡ • sᴇɴᴅ ɪɴsᴛᴀɴᴛ ᴘʀᴏᴍᴏᴛɪᴏɴ ʀᴏᴜɴᴅ"),
+    # ── MGB GLOBAL BRAND & RECOVERY MANAGER COMMANDS ──
+    BotCommand("brand", "❖ ʙʀᴀɴᴅ ᴘᴀɴᴇʟ • ɢʟᴏʙᴀʟ ʟɪɴᴋs & ʀᴇᴄᴏᴠᴇʀʏ ᴘᴀɴᴇʟ"),
+    BotCommand("setall", "❖ ᴜᴘᴅᴀᴛᴇ ᴀʟʟ • ᴄʜᴀɴɢᴇ ᴏᴡɴᴇʀ, ᴄʜᴀɴɴᴇʟ & ɢʀᴏᴜᴘ"),
+    BotCommand("setchannel", "❖ sᴇᴛ ᴄʜᴀɴɴᴇʟ • ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ ʟɪɴᴋ ɢʟᴏʙᴀʟʟʏ"),
+    BotCommand("setgroup", "❖ sᴇᴛ ɢʀᴏᴜᴘ • ᴜᴘᴅᴀᴛᴇ sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ ɢʟᴏʙᴀʟʟʏ"),
+    BotCommand("replace", "❖ ɢʟᴏʙᴀʟ ʀᴇᴘʟᴀᴄᴇ • ʀᴇᴘʟᴀᴄᴇ ᴀɴʏ ᴛᴇxᴛ ᴏʀ ʟɪɴᴋ"),
 ]
-
-
 # HTTP Server for Render health checks
 class HealthCheckHandler(BaseHTTPRequestHandler):
     """Simple HTTP handler for Render health checks"""
-    
+
     def do_GET(self):
         """Handle GET requests"""
         self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
-        self.wfile.write(b'Bot is running')
-    
+        self.wfile.write(b"Bot is running")
+
     def log_message(self, format, *args):
         """Suppress log messages to keep console clean"""
         pass
@@ -156,7 +179,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
 def run_http_server():
     """Run a simple HTTP server for Render health checks"""
     port = int(os.environ.get("PORT", 8000))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
     logger.info(f"🌐 HTTP health check server started on port {port}")
     server.serve_forever()
 
@@ -177,13 +200,13 @@ async def main():
 
         # Step 3: Connect to MongoDB database
         await db.connect()
-        
+
         # Step 4: Start the main bot client
         await app.boot()
-        
+
         # Step 5: Start assistant/userbot clients (for joining voice chats)
         await userbot.boot()
-        
+
         # Step 6: Initialize voice call handler
         await tune.boot()
 
@@ -193,12 +216,14 @@ async def main():
                 importlib.import_module(f"ArtistMusic.plugins.{module}")
             except Exception as e:
                 logger.error(f"Failed to load plugin {module}: {e}", exc_info=True)
+
         # Artistbots group-manager modules (ArtistMusic/Artistbots/)
         for module in artistbots_modules:
             try:
                 importlib.import_module(f"ArtistMusic.Artistbots.{module}")
             except Exception as e:
                 logger.error(f"Failed to load Artistbots module {module}: {e}", exc_info=True)
+
         logger.info(f"🔌 Loaded {len(all_modules) + len(artistbots_modules)} plugin modules.")
 
         # Set Telegram command menu
@@ -214,6 +239,26 @@ async def main():
         app.sudo_filter.update(sudoers)  # Add sudo users to filter
         app.bl_users.update(await db.get_blacklisted())  # Add blacklisted users to filter
         logger.info(f"👑 Loaded {len(app.sudoers)} sudo users.")
+
+        # Step 8.5: Auto-boot MGB Brand Manager, Dynamic Assistants & Auto Promo
+        try:
+            from ArtistMusic.plugins.mgb_brand_manager import boot_brand_manager
+            await boot_brand_manager()
+        except Exception as e:
+            logger.warning(f"⚠️ Brand Manager auto-boot skipped: {e}")
+
+        try:
+            from ArtistMusic.plugins.mgb_assistant_manager import boot_saved_assistants
+            await boot_saved_assistants()
+        except Exception as e:
+            logger.warning(f"⚠️ Dynamic Assistants auto-boot skipped: {e}")
+
+        try:
+            from ArtistMusic.plugins.mgb_auto_broadcast import start_auto_broadcast_loop
+            start_auto_broadcast_loop()
+        except Exception as e:
+            logger.warning(f"⚠️ Auto Broadcast auto-boot skipped: {e}")
+
         logger.info("\n🎉 Bot started successfully! Ready to play music! 🎵\n")
 
         # Step 9: Keep the bot running (press Ctrl+C to stop)
@@ -223,7 +268,7 @@ async def main():
             logger.info("Received stop signal...")
         except Exception as e:
             logger.error(f"Error during idle: {e}", exc_info=True)
-        
+
         # Step 10: Cleanup and shutdown when bot is stopped
         await stop()
     except Exception as e:
@@ -249,6 +294,5 @@ if __name__ == "__main__":
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 loop.stop()
-        except:
+        except Exception:
             pass
-            
