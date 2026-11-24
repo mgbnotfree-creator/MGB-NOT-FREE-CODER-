@@ -15,8 +15,6 @@ import pyrogram
 from typing import Optional
 
 from pyrogram import raw
-from pyrogram.errors import UserMigrate
-from pyrogram.session import Auth, Session
 
 from ArtistMusic import config, logger
 
@@ -69,70 +67,55 @@ class Bot(pyrogram.Client):
         self.username: Optional[str] = None
         self.mention: Optional[str] = None
 
-    async def _switch_dc(self, dc_id: int) -> None:
-        """Switch active MTProto session directly to target DC."""
-        if getattr(self, "session", None):
-            try:
-                await self.session.stop()
-            except Exception:
-                pass
-        test_mode = await self.storage.test_mode()
-        await self.storage.dc_id(dc_id)
-        auth_key = await Auth(self, dc_id, test_mode).create()
-        await self.storage.auth_key(auth_key)
-        self.session = Session(self, dc_id, auth_key, test_mode)
-        await self.session.start()
-
     async def _start_with_direct_dc(self) -> None:
-        """Bypass broken DC 2 routing by trying DC 5 -> 4 -> 1 -> 2 directly."""
-        is_authorized = await self.connect()
-        try:
-            if not is_authorized:
-                last_err = None
-                authorized_user = None
-                for dc in (5, 4, 1, 2):
-                    try:
-                        logger.info(f"🌐 Trying direct bot login on DC {dc}...")
-                        await self._switch_dc(dc)
-                        while True:
-                            try:
-                                r = await self.invoke(
-                                    raw.functions.auth.ImportBotAuthorization(
-                                        flags=0,
-                                        api_id=self.api_id,
-                                        api_hash=self.api_hash,
-                                        bot_auth_token=self.bot_token,
-                                    ),
-                                    retries=2,
-                                )
-                                await self.storage.user_id(r.user.id)
-                                await self.storage.is_bot(True)
-                                authorized_user = r.user
-                                logger.info(f"✅ Bot authorized directly on DC {await self.storage.dc_id()}!")
-                                break
-                            except UserMigrate as e:
-                                logger.info(f"🔀 Migrating bot login to DC {e.value}...")
-                                await self._switch_dc(e.value)
-                        if authorized_user:
-                            break
-                    except Exception as err:
-                        last_err = err
-                        logger.warning(f"⚠️ Direct login on DC {dc} failed: {err}")
+        """Try direct login across DC 5 -> 4 -> 1 -> 2 using Pyrogram's native Auth/Session."""
+        last_err = None
+        for dc in (5, 4, 1, 2):
+            orig_open = self.storage.open
+            orig_dc_id = self.storage.dc_id
 
-                if not authorized_user:
-                    raise last_err or RuntimeError("All Telegram DCs failed for ImportBotAuthorization")
+            async def _open_with_dc(_orig_open=orig_open, _orig_dc=orig_dc_id, _dc=dc):
+                await _orig_open()
+                await _orig_dc(_dc)
 
-            await self.invoke(raw.functions.updates.GetState())
-        except Exception:
-            if getattr(self, "is_connected", False):
+            async def _forced_dc_id(*args, _orig_dc=orig_dc_id, _dc=dc, **kwargs):
+                if (not args and not kwargs) or (len(args) == 1 and args[0] is object):
+                    return await _orig_dc()
+                return await _orig_dc(_dc)
+
+            try:
+                logger.info(f"🌐 Trying direct bot login on DC {dc}...")
+                self.storage.open = _open_with_dc
+                self.storage.dc_id = _forced_dc_id
                 try:
-                    await self.disconnect()
+                    is_authorized = await self.connect()
+                finally:
+                    self.storage.open = orig_open
+                    self.storage.dc_id = orig_dc_id
+
+                if not is_authorized:
+                    await self.sign_in_bot(self.bot_token)
+
+                await self.invoke(raw.functions.updates.GetState())
+                self.me = await self.get_me()
+                await self.initialize()
+                logger.info(f"✅ Bot authorized on DC {await self.storage.dc_id()}!")
+                return
+            except Exception as err:
+                last_err = err
+                logger.warning(f"⚠️ Direct login on DC {dc} failed: {err}")
+                try:
+                    if getattr(self, "is_connected", False):
+                        await self.disconnect()
+                    else:
+                        if getattr(self, "session", None):
+                            await self.session.stop()
+                        await self.storage.close()
                 except Exception:
                     pass
-            raise
-        else:
-            self.me = await self.get_me()
-            await self.initialize()
+                self.session = None
+
+        raise last_err or RuntimeError("All Telegram DCs failed for ImportBotAuthorization")
 
     async def boot(self) -> None:
         """Start the bot and verify logger group access."""
