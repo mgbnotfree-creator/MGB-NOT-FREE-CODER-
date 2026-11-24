@@ -12,26 +12,55 @@
 import inspect
 import logging
 import os
-import sys
 import pyrogram
 from typing import Optional
 
 from pyrogram import raw
+from pyrogram.session import Auth, Session
 
 from ArtistMusic import config, logger
 
 TARGET_DC = 5
 
 
-def _wrap_dc(cls, target_dc: int = TARGET_DC):
-    """Wrap Pyrogram Auth/Session to force target DC without breaking version-specific args."""
-    def _factory(*args, **kwargs):
-        if "dc_id" in kwargs:
-            kwargs["dc_id"] = target_dc
-        elif len(args) >= 2 and isinstance(args[1], int):
-            args = (args[0], target_dc, *args[2:])
-        return cls(*args, **kwargs)
-    return _factory
+def _build_with_sig(cls, available: dict):
+    """Instantiate Auth/Session using exact signature of the installed Pyrogram fork."""
+    sig = inspect.signature(cls.__init__)
+    kwargs = {}
+    for name, param in sig.parameters.items():
+        if name == "self" or param.kind in (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        ):
+            continue
+        if name in available:
+            kwargs[name] = available[name]
+        elif param.default is inspect.Parameter.empty:
+            low = name.lower()
+            if "ipv6" in low:
+                kwargs[name] = available["ipv6"]
+            elif any(k in low for k in ("addr", "ip", "host")):
+                kwargs[name] = available["server_address"]
+            else:
+                raise RuntimeError(
+                    f"Unknown required param '{name}' in {cls.__name__}.__init__{sig}"
+                )
+    return cls(**kwargs)
+
+
+def _resolve_dc_endpoint(dc_id: int, test_mode: bool, ipv6: bool):
+    """Get exact (ip, port) for target Telegram DC."""
+    try:
+        from pyrogram.session.internals import DataCenter
+        try:
+            info = DataCenter(dc_id, test_mode, ipv6, False)
+        except TypeError:
+            info = DataCenter(dc_id, test_mode, ipv6)
+        if isinstance(info, (tuple, list)) and len(info) >= 2:
+            return str(info[0]), int(info[1])
+        return str(info), 443
+    except Exception:
+        return "91.108.56.130", 443
 
 
 class MutableUserFilter(pyrogram.filters.Filter, set):
@@ -46,7 +75,7 @@ class MutableUserFilter(pyrogram.filters.Filter, set):
 
 
 class Bot(pyrogram.Client):
-    """Main bot client class with Direct DC 5 login & BOT_SESSION support."""
+    """Main bot client class with true Direct DC 5 auth & BOT_SESSION support."""
 
     def __init__(self):
         bot_session = (os.getenv("BOT_SESSION") or "").strip() or None
@@ -66,11 +95,6 @@ class Bot(pyrogram.Client):
             ),
         )
 
-        # Pass dc_id natively if installed Pyrogram/Pyrofork/Kurigram supports it
-        init_params = inspect.signature(pyrogram.Client.__init__).parameters
-        if "dc_id" in init_params and not bot_session:
-            client_kwargs["dc_id"] = TARGET_DC
-
         if bot_session:
             client_kwargs["session_string"] = bot_session
         else:
@@ -89,70 +113,68 @@ class Bot(pyrogram.Client):
         self.mention: Optional[str] = None
 
     async def _start_on_dc5(self) -> None:
-        """Force initial Telegram connection & bot login directly on DC 5."""
+        """Create auth_key directly on DC 5 and connect Session to the exact same DC 5."""
+        test_mode = bool(getattr(self, "test_mode", False))
+        ipv6 = bool(getattr(self, "ipv6", False))
+        dc_ip, dc_port = _resolve_dc_endpoint(TARGET_DC, test_mode, ipv6)
+
         logger.info(
-            f"🌐 Booting bot directly on Telegram DC {TARGET_DC} "
-            f"(pyrogram v{getattr(pyrogram, '__version__', 'unknown')})..."
+            f"🌐 Direct DC {TARGET_DC} login ({dc_ip}:{dc_port}) | "
+            f"pyrogram v{getattr(pyrogram, '__version__', 'unknown')}"
         )
 
-        orig_open = self.storage.open
-        orig_dc_id = self.storage.dc_id
-
-        async def _open_dc5():
-            await orig_open()
-            await orig_dc_id(TARGET_DC)
-
-        async def _forced_dc5(*args, **kwargs):
-            if (not args and not kwargs) or (len(args) == 1 and args[0] is object):
-                return await orig_dc_id()
-            return await orig_dc_id(TARGET_DC)
-
-        # Patch Auth & Session temporarily during initial connect so DC 2 is never used
-        patched = []
-        for mod_name in ("pyrogram.client", "pyrogram.methods.auth.connect"):
-            mod = sys.modules.get(mod_name)
-            if not mod:
-                continue
-            for attr in ("Auth", "Session"):
-                if hasattr(mod, attr):
-                    orig_obj = getattr(mod, attr)
-                    patched.append((mod, attr, orig_obj))
-                    setattr(mod, attr, _wrap_dc(orig_obj, TARGET_DC))
-
-        self.storage.open = _open_dc5
-        self.storage.dc_id = _forced_dc5
-
+        await self.storage.open()
         try:
-            is_authorized = await self.connect()
-        finally:
-            self.storage.open = orig_open
-            self.storage.dc_id = orig_dc_id
-            for mod, attr, orig_obj in patched:
-                setattr(mod, attr, orig_obj)
+            await self.storage.dc_id(TARGET_DC)
+            await self.storage.test_mode(test_mode)
+            if hasattr(self.storage, "api_id"):
+                try:
+                    await self.storage.api_id(self.api_id)
+                except Exception:
+                    pass
 
-        try:
-            sess_dc = getattr(self.session, "dc_id", None)
-            store_dc = await self.storage.dc_id()
-            logger.info(f"📡 Connected to Telegram DC {sess_dc} (storage DC {store_dc})")
+            common_args = {
+                "client": self,
+                "dc_id": TARGET_DC,
+                "server_address": dc_ip,
+                "address": dc_ip,
+                "ip": dc_ip,
+                "ip_address": dc_ip,
+                "host": dc_ip,
+                "port": dc_port,
+                "test_mode": test_mode,
+                "ipv6": ipv6,
+            }
 
-            if not is_authorized:
-                await self.sign_in_bot(self.bot_token)
+            logger.info(f"🔐 Generating fresh auth key directly on DC {TARGET_DC}...")
+            auth_key = await _build_with_sig(Auth, common_args).create()
+            await self.storage.auth_key(auth_key)
 
+            session_args = dict(common_args)
+            session_args["auth_key"] = auth_key
+
+            self.session = _build_with_sig(Session, session_args)
+            await self.session.start()
+            self.is_connected = True
+            logger.info(f"📡 Connected cleanly to Telegram DC {TARGET_DC}!")
+
+            await self.sign_in_bot(self.bot_token)
             await self.invoke(raw.functions.updates.GetState())
             self.me = await self.get_me()
             await self.initialize()
             logger.info(f"✅ Bot authorized successfully on DC {await self.storage.dc_id()}!")
         except Exception:
             try:
-                if getattr(self, "is_connected", False):
-                    await self.disconnect()
-                else:
-                    if getattr(self, "session", None):
-                        await self.session.stop()
-                    await self.storage.close()
+                if getattr(self, "session", None):
+                    await self.session.stop()
             except Exception:
                 pass
             self.session = None
+            self.is_connected = False
+            try:
+                await self.storage.close()
+            except Exception:
+                pass
             raise
 
     async def boot(self) -> None:
