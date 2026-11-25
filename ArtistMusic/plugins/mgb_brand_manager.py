@@ -20,7 +20,7 @@ import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient as AsyncIOMotorClient
 from pyrogram import enums, filters
 from pyrogram.types import (
     CallbackQuery,
