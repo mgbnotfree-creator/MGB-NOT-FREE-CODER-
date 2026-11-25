@@ -13,7 +13,7 @@ import os
 import time
 from typing import Any, Dict, List, Optional
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient as AsyncIOMotorClient
 from pyrogram import Client, enums, filters
 from pyrogram.errors import (
     FloodWait,
